@@ -326,6 +326,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Users, 
   Building2, 
@@ -338,6 +340,7 @@ import {
   BarChart3,
   Target
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -345,6 +348,21 @@ import { supabase } from "@/integrations/supabase/client";
 const AdminDashboard = () => 
   {
   const navigate = useNavigate();
+  
+  // State for admin creation dialog
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newAdmin, setNewAdmin] = useState({
+    fullName: "",
+    email: "",
+    role: "",
+    password: ""
+  });
+  const [dialogError, setDialogError] = useState("");
+  const [dialogSuccess, setDialogSuccess] = useState("");
+
+  // Debug: Log dialog state changes
+  console.log("Dialog state:", isDialogOpen);
 
   const handleLogout = async() => 
   {
@@ -358,7 +376,81 @@ const AdminDashboard = () =>
     {
     console.error("Error logging out:", err.message);
     }
+  };
 
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDialogError("");
+    setDialogSuccess("");
+    setIsCreating(true);
+
+    try {
+      // Validate form
+      if (!newAdmin.fullName || !newAdmin.email || !newAdmin.role || !newAdmin.password) {
+        setDialogError("Please fill in all fields.");
+        setIsCreating(false);
+        return;
+      }
+
+      if (newAdmin.password.length < 6) {
+        setDialogError("Password must be at least 6 characters long.");
+        setIsCreating(false);
+        return;
+      }
+
+      // Create admin account using Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: newAdmin.email,
+        password: newAdmin.password,
+        options: {
+          data: {
+            full_name: newAdmin.fullName,
+            role: newAdmin.role,
+          }
+        }
+      });
+
+      if (error) {
+        setDialogError(error.message);
+        setIsCreating(false);
+        return;
+      }
+
+      if (data.user) {
+        setDialogSuccess(`Admin account created successfully! ${data.user.email_confirmed_at ? 'Account is ready to use.' : 'Verification email sent to ' + newAdmin.email}`);
+        
+        // Reset form
+        setNewAdmin({
+          fullName: "",
+          email: "",
+          role: "",
+          password: ""
+        });
+
+        // Close dialog after 2 seconds
+        setTimeout(() => {
+          setIsDialogOpen(false);
+          setDialogSuccess("");
+        }, 2000);
+      }
+    } catch (err: any) {
+      setDialogError("Failed to create admin account. Please try again.");
+      console.error("Admin creation error:", err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const resetDialog = () => {
+    console.log("Reset dialog function called");
+    setNewAdmin({
+      fullName: "",
+      email: "",
+      role: "",
+      password: ""
+    });
+    setDialogError("");
+    setDialogSuccess("");
   };
 
   return (
@@ -459,8 +551,8 @@ const AdminDashboard = () =>
 
           {/* Main Content */}
           <Tabs defaultValue="students" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm p-2 rounded-xl shadow-lg">
-              {["Students", "Reports"].map((tab) => (
+            <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm p-2 rounded-xl shadow-lg">
+              {["Students", "Admins", "Reports"].map((tab) => (
                 <TabsTrigger 
                   key={tab.toLowerCase()}
                   value={tab.toLowerCase()} 
@@ -543,6 +635,235 @@ const AdminDashboard = () =>
                         </div>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="admins" className="space-y-6">
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
+                        Admin Management
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 font-medium">
+                        Manage admin users and their permissions
+                      </CardDescription>
+                    </div>
+                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                      console.log("Dialog onOpenChange called with:", open);
+                      setIsDialogOpen(open);
+                      if (open) {
+                        resetDialog();
+                      }
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Admin
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px] bg-white">
+                        <DialogHeader>
+                          <DialogTitle className="text-xl bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
+                            Create New Admin Account
+                          </DialogTitle>
+                          <DialogDescription className="text-gray-600">
+                            Fill in the details to create a new admin account. The admin will receive login credentials via email.
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <form onSubmit={handleCreateAdmin} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="fullName" className="text-gray-700 font-semibold">
+                              Full Name
+                            </Label>
+                            <Input
+                              id="fullName"
+                              type="text"
+                              placeholder="Enter admin's full name"
+                              value={newAdmin.fullName}
+                              onChange={(e) => setNewAdmin({...newAdmin, fullName: e.target.value})}
+                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="text-gray-700 font-semibold">
+                              Email Address
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="Enter admin's email"
+                              value={newAdmin.email}
+                              onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})}
+                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="role" className="text-gray-700 font-semibold">
+                              Admin Role
+                            </Label>
+                            <select 
+                              id="role"
+                              value={newAdmin.role}
+                              onChange={(e) => setNewAdmin({...newAdmin, role: e.target.value})}
+                              className="w-full border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                              required
+                            >
+                              <option value="">Select Role</option>
+                              <option value="admin">Admin</option>
+                              <option value="coordinator">Placement Coordinator</option>
+                              <option value="super_admin">Super Admin</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="password" className="text-gray-700 font-semibold">
+                              Temporary Password
+                            </Label>
+                            <Input
+                              id="password"
+                              type="password"
+                              placeholder="Create temporary password (min 6 chars)"
+                              value={newAdmin.password}
+                              onChange={(e) => setNewAdmin({...newAdmin, password: e.target.value})}
+                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
+                              required
+                            />
+                          </div>
+
+                          {/* Success Message */}
+                          {dialogSuccess && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <p className="text-sm text-green-600 font-medium">
+                                {dialogSuccess}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Error Message */}
+                          {dialogError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-600 font-medium">
+                                {dialogError}
+                              </p>
+                            </div>
+                          )}
+
+                          <DialogFooter className="gap-2">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setIsDialogOpen(false)}
+                              className="border-2 border-gray-300 text-gray-600 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={isCreating}
+                              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isCreating ? "Creating..." : "Create Admin"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { name: "John Admin", email: "admin@gmail.com", role: "Super Admin", status: "Active", lastLogin: "2 hours ago" },
+                      { name: "Jane Coordinator", email: "jane.admin@college.edu", role: "Placement Coordinator", status: "Active", lastLogin: "1 day ago" },
+                      { name: "Mike Officer", email: "mike.admin@college.edu", role: "Admin", status: "Inactive", lastLogin: "1 week ago" },
+                    ].map((admin, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-xl hover:shadow-md transition-all duration-300 transform hover:scale-105">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{admin.name}</p>
+                            <p className="text-sm text-gray-600">{admin.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-gray-600">Role</p>
+                            <p className="text-sm font-bold text-gray-800">{admin.role}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-gray-600">Last Login</p>
+                            <p className="text-sm text-gray-700">{admin.lastLogin}</p>
+                          </div>
+                          <Badge 
+                            className={`px-3 py-1 font-semibold ${
+                              admin.status === "Active" ? "bg-gradient-to-r from-green-400 to-blue-400 text-white" : 
+                              "bg-gradient-to-r from-gray-400 to-gray-500 text-white"
+                            }`}
+                          >
+                            {admin.status}
+                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="border-2 border-purple-300 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+                            >
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="border-2 border-red-300 text-red-600 hover:bg-red-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                    <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      Add New Admin
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Input 
+                        placeholder="Full Name" 
+                        className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
+                      />
+                      <Input 
+                        placeholder="Email Address" 
+                        type="email"
+                        className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
+                      />
+                      <select className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg px-3 py-2 text-gray-800 bg-white">
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="coordinator">Placement Coordinator</option>
+                        <option value="super_admin">Super Admin</option>
+                      </select>
+                      <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transform transition-all duration-300 hover:scale-105">
+                        Create Admin
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-3">
+                      <strong>Note:</strong> New admin will receive an email with login credentials and setup instructions.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

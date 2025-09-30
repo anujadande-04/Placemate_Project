@@ -1,83 +1,85 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { GraduationCap } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-
-const Login = () => {
+const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userType, setUserType] = useState("student");
-   const [errorMessage, setErrorMessage] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const userType = "student"; // Fixed to student only
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
- const navigate = useNavigate();
+  const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
- 
-  try {
-      const { data, error } = await supabase.auth.signInWithPassword(
-      {
-        email,
-        password,
+    setSuccessMessage("");
+    setIsLoading(true);
+
+    // Validation
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters long.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!fullName.trim()) {
+      setErrorMessage("Please enter your full name.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Sign up the user
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: userType, // Set the role during signup
+          }
+        }
       });
 
       if (error) {
-        console.error("Login failed:", error.message);
+        console.error("Signup failed:", error.message);
         setErrorMessage(error.message);
+        setIsLoading(false);
         return;
       }
-       else {
-        console.log("Login success:", data);
 
-        const user = data.user;
-        if(!user)
-        {
-          setErrorMessage("No user found after login..");
-          return;
-        }
-
-        // Get the actual role from user metadata (from Supabase)
-        const role = user.user_metadata?.role;
-        
-        // Debug: Log user metadata to see what's available
-        console.log("User metadata:", user.user_metadata);
-        console.log("User role:", role);
-        console.log("Selected userType:", userType);
-        
-        // Validate that the selected userType matches the actual user role
-        if (!role) {
-          setErrorMessage("User role not found. Please contact support.");
-          return;
-        }
-
-        if (userType !== role) {
-          setErrorMessage(`You selected ${userType} but your account is registered as ${role}. Please select the correct account type.`);
-          return;
-        }
-
-        // Navigate based on the actual user role (not just the selected tab)
-        if (role === "student") {
-          navigate("/dashboard/student");
-        } else if (role === "admin") {
-          navigate("/dashboard/admin");
+      if (data.user) {
+        if (!data.user.email_confirmed_at) {
+          setSuccessMessage("Please check your email for verification link before logging in.");
         } else {
-          setErrorMessage("Unauthorized role. Please contact support.");
+          setSuccessMessage("Account created successfully! Redirecting to login...");
+          setTimeout(() => {
+            navigate("/login");
+          }, 2000);
         }
-     }
-    }
-     catch (err: any) {
+      }
+    } catch (err: any) {
       console.error("Unexpected error:", err.message);
       setErrorMessage("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  
   };
 
   return (
@@ -106,44 +108,52 @@ const Login = () => {
               </h1>
             </div>
             <p className="text-lg text-gray-600 font-medium">
-              Intelligent Student Placement Prediction Platform
+              Join the Intelligent Student Placement Platform
             </p>
           </div>
 
-          {/* Login Card */}
+          {/* Signup Card */}
           <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-sm transform transition-all duration-500 hover:scale-105">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-pink-600 bg-clip-text text-transparent">
-                Welcome Back!
+                Create Student Account
               </CardTitle>
               <CardDescription className="text-gray-600 font-medium">
-                Choose your account type and enter your credentials
+                Join as a student to access placement predictions and career guidance
               </CardDescription>
             </CardHeader>
             
             <CardContent>
-              {/* User Type Tabs */}
-              <Tabs value={userType} onValueChange={setUserType} className="mb-6">
-                <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-blue-100 to-pink-100 p-1 rounded-xl">
-                  <TabsTrigger 
-                    value="student" 
-                    className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-pink-500 data-[state=active]:text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105"
-                  >
-                    <GraduationCap className="h-4 w-4" />
-                    Student
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="admin" 
-                    className="flex items-center gap-2 font-semibold rounded-lg transition-all duration-300 transform hover:scale-105"
-                  >
-                    <Users className="h-4 w-4" />
-                    Admin
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              {/* Student Registration Info */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-pink-50 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-pink-500">
+                    <GraduationCap className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Student Registration</h3>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Create your student account to access placement predictions, skill assessments, and career guidance.
+                </p>
+              </div>
 
-              {/* Login Form */}
-              <form onSubmit={handleLogin} className="space-y-6">
+              {/* Signup Form */}
+              <form onSubmit={handleSignup} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-gray-700 font-semibold">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="border-2 border-gray-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-3 text-black placeholder-gray-800 transition-all duration-300 bg-white"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700 font-semibold">
                     Email Address
@@ -166,7 +176,7 @@ const Login = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder="Create a password (min 6 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -174,13 +184,38 @@ const Login = () => {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-gray-700 font-semibold">
+                    Confirm Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="border-2 border-gray-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-3 text-black placeholder-gray-800 transition-all duration-300 bg-white"
+                  />
+                </div>
+
                 <Button 
                   type="submit" 
-                  className="w-full bg-gradient-to-r from-blue-500 via-pink-500 to-purple-500 hover:from-blue-600 hover:via-pink-600 hover:to-purple-600 text-white font-bold py-3 rounded-xl transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-blue-500 via-pink-500 to-purple-500 hover:from-blue-600 hover:via-pink-600 hover:to-purple-600 text-white font-bold py-3 rounded-xl transform transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign In as {userType === "student" ? "Student" : "Admin"}
+                  {isLoading ? "Creating Student Account..." : "Create Student Account"}
                 </Button>
               </form>
+
+              {/* Success Message Display */}
+              {successMessage && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-600 font-medium text-center">
+                    {successMessage}
+                  </p>
+                </div>
+              )}
 
               {/* Error Message Display */}
               {errorMessage && (
@@ -191,15 +226,15 @@ const Login = () => {
                 </div>
               )}
 
-              {/* Sign Up Link */}
+              {/* Login Link */}
               <div className="mt-8 text-center">
                 <p className="text-gray-600">
-                  Don't have an account?{" "}
+                  Already have an account?{" "}
                   <Link 
-                    to="/signup"
+                    to="/login"
                     className="text-blue-600 hover:text-pink-500 font-semibold transition-colors duration-300"
                   >
-                    Sign up here
+                    Sign in here
                   </Link>
                 </p>
               </div>
@@ -218,4 +253,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;
