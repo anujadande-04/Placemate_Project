@@ -65,6 +65,21 @@ const Signup = () => {
       }
 
       if (data.user) {
+        // Insert extra user info into profiles table (only id and name allowed by types)
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              { id: data.user.id, name: fullName }
+            ]);
+          if (profileError) {
+            console.error("Profile insert failed:", profileError.message);
+            setErrorMessage("Account created, but failed to save profile info.");
+          }
+        } catch (profileErr: any) {
+          console.error("Unexpected profile error:", profileErr.message);
+        }
+
         if (!data.user.email_confirmed_at) {
           setSuccessMessage("Please check your email for verification link before logging in.");
         } else {

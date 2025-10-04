@@ -59,7 +59,7 @@ const Login = () => {
         }
 
         if (userType !== role) {
-          setErrorMessage(`You selected ${userType} but your account is registered as ${role}. Please select the correct account type.`);
+          setErrorMessage(`Please select the correct account type.`);
           return;
         }
 
