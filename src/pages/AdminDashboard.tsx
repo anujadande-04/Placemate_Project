@@ -1,456 +1,341 @@
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { Input } from "@/components/ui/input";
-// import { 
-//   Users, 
-//   Building2, 
-//   TrendingUp, 
-//   Calendar,
-//   Search,
-//   Filter,
-//   Download,
-//   Plus,
-//   BarChart3,
-//   Target
-// } from "lucide-react";
-
-// const AdminDashboard = () => {
-//   return (
-//     <div className="min-h-screen bg-background p-6">
-//       <div className="max-w-7xl mx-auto space-y-6">
-//         {/* Header */}
-//         <div className="flex items-center justify-between">
-//           <div>
-//             <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-//             <p className="text-muted-foreground">Placement Officer Portal</p>
-//           </div>
-//           <div className="flex items-center gap-3">
-//             <Button variant="outline" size="sm">
-//               <Download className="h-4 w-4 mr-2" />
-//               Export Reports
-//             </Button>
-//             <Button size="sm">
-//               <Plus className="h-4 w-4 mr-2" />
-//               Add Placement Drive
-//             </Button>
-//           </div>
-//         </div>
-
-//         {/* Key Metrics */}
-//         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-//           <Card>
-//             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-//               <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-//               <Users className="h-4 w-4 text-primary" />
-//             </CardHeader>
-//             <CardContent>
-//               <div className="text-2xl font-bold">1,247</div>
-//               <p className="text-xs text-muted-foreground">+12% from last year</p>
-//             </CardContent>
-//           </Card>
-
-//           <Card>
-//             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-//               <CardTitle className="text-sm font-medium">Placement Rate</CardTitle>
-//               <TrendingUp className="h-4 w-4 text-primary" />
-//             </CardHeader>
-//             <CardContent>
-//               <div className="text-2xl font-bold text-primary">87.5%</div>
-//               <p className="text-xs text-muted-foreground">+3.2% from last year</p>
-//             </CardContent>
-//           </Card>
-
-//           <Card>
-//             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-//               <CardTitle className="text-sm font-medium">Active Companies</CardTitle>
-//               <Building2 className="h-4 w-4 text-primary" />
-//             </CardHeader>
-//             <CardContent>
-//               <div className="text-2xl font-bold">156</div>
-//               <p className="text-xs text-muted-foreground">+23 new partnerships</p>
-//             </CardContent>
-//           </Card>
-
-//           <Card>
-//             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-//               <CardTitle className="text-sm font-medium">Upcoming Drives</CardTitle>
-//               <Calendar className="h-4 w-4 text-primary" />
-//             </CardHeader>
-//             <CardContent>
-//               <div className="text-2xl font-bold">18</div>
-//               <p className="text-xs text-muted-foreground">This month</p>
-//             </CardContent>
-//           </Card>
-//         </div>
-
-//         {/* Main Content */}
-//         <Tabs defaultValue="students" className="space-y-6">
-//           <TabsList className="grid w-full grid-cols-4">
-//             <TabsTrigger value="students">Students</TabsTrigger>
-//             <TabsTrigger value="companies">Companies</TabsTrigger>
-//             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-//             <TabsTrigger value="reports">Reports</TabsTrigger>
-//           </TabsList>
-
-//           <TabsContent value="students" className="space-y-6">
-//             <Card>
-//               <CardHeader>
-//                 <div className="flex items-center justify-between">
-//                   <div>
-//                     <CardTitle>Student Management</CardTitle>
-//                     <CardDescription>
-//                       Monitor student profiles and placement readiness
-//                     </CardDescription>
-//                   </div>
-//                   <div className="flex items-center gap-2">
-//                     <div className="relative">
-//                       <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-//                       <Input placeholder="Search students..." className="pl-9 w-64" />
-//                     </div>
-//                     <Button variant="outline" size="icon">
-//                       <Filter className="h-4 w-4" />
-//                     </Button>
-//                   </div>
-//                 </div>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="space-y-4">
-//                   {[
-//                     { name: "John Doe", id: "CS2020001", cgpa: "8.5", score: "85", status: "Ready" },
-//                     { name: "Jane Smith", id: "CS2020002", cgpa: "9.1", score: "92", status: "Excellent" },
-//                     { name: "Mike Johnson", id: "CS2020003", cgpa: "7.8", score: "76", status: "Needs Improvement" },
-//                     { name: "Sarah Wilson", id: "CS2020004", cgpa: "8.9", score: "88", status: "Ready" },
-//                   ].map((student, index) => (
-//                     <div key={index} className="flex items-center justify-between p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
-//                       <div className="flex items-center gap-4">
-//                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
-//                           <Users className="h-4 w-4 text-primary" />
-//                         </div>
-//                         <div>
-//                           <p className="font-medium">{student.name}</p>
-//                           <p className="text-sm text-muted-foreground">{student.id}</p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-center gap-6">
-//                         <div className="text-center">
-//                           <p className="text-sm font-medium">CGPA</p>
-//                           <p className="text-lg font-bold text-primary">{student.cgpa}</p>
-//                         </div>
-//                         <div className="text-center">
-//                           <p className="text-sm font-medium">Score</p>
-//                           <p className="text-lg font-bold">{student.score}/100</p>
-//                         </div>
-//                         <Badge 
-//                           variant={student.status === "Excellent" ? "default" : 
-//                                   student.status === "Ready" ? "secondary" : "destructive"}
-//                         >
-//                           {student.status}
-//                         </Badge>
-//                         <Button variant="outline" size="sm">
-//                           View Details
-//                         </Button>
-//                       </div>
-//                     </div>
-//                   ))}
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </TabsContent>
-
-//           <TabsContent value="companies" className="space-y-6">
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle>Company Partnerships</CardTitle>
-//                 <CardDescription>
-//                   Manage placement drives and company relationships
-//                 </CardDescription>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//                   {[
-//                     { name: "TCS", drives: 3, hired: 45, package: "7.5 LPA", status: "Active" },
-//                     { name: "Infosys", drives: 2, hired: 32, package: "6.5 LPA", status: "Active" },
-//                     { name: "Wipro", drives: 1, hired: 18, package: "6.0 LPA", status: "Scheduled" },
-//                     { name: "Accenture", drives: 2, hired: 28, package: "8.0 LPA", status: "Active" },
-//                   ].map((company, index) => (
-//                     <Card key={index} className="border-2 hover:border-primary/50 transition-colors">
-//                       <CardContent className="p-4">
-//                         <div className="flex items-center justify-between mb-4">
-//                           <div className="flex items-center gap-2">
-//                             <Building2 className="h-5 w-5 text-primary" />
-//                             <span className="font-semibold">{company.name}</span>
-//                           </div>
-//                           <Badge variant={company.status === "Active" ? "default" : "secondary"}>
-//                             {company.status}
-//                           </Badge>
-//                         </div>
-//                         <div className="space-y-2 text-sm">
-//                           <div className="flex justify-between">
-//                             <span className="text-muted-foreground">Drives:</span>
-//                             <span className="font-medium">{company.drives}</span>
-//                           </div>
-//                           <div className="flex justify-between">
-//                             <span className="text-muted-foreground">Hired:</span>
-//                             <span className="font-medium">{company.hired}</span>
-//                           </div>
-//                           <div className="flex justify-between">
-//                             <span className="text-muted-foreground">Package:</span>
-//                             <span className="font-medium text-primary">{company.package}</span>
-//                           </div>
-//                         </div>
-//                         <Button size="sm" className="w-full mt-4">
-//                           Manage Drives
-//                         </Button>
-//                       </CardContent>
-//                     </Card>
-//                   ))}
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </TabsContent>
-
-//           <TabsContent value="analytics" className="space-y-6">
-//             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//               <Card>
-//                 <CardHeader>
-//                   <CardTitle className="flex items-center gap-2">
-//                     <BarChart3 className="h-5 w-5 text-primary" />
-//                     Placement Trends
-//                   </CardTitle>
-//                 </CardHeader>
-//                 <CardContent>
-//                   <div className="h-64 flex items-center justify-center text-muted-foreground">
-//                     Interactive placement trend chart will be displayed here
-//                   </div>
-//                 </CardContent>
-//               </Card>
-
-//               <Card>
-//                 <CardHeader>
-//                   <CardTitle className="flex items-center gap-2">
-//                     <Target className="h-5 w-5 text-primary" />
-//                     Department-wise Performance
-//                   </CardTitle>
-//                 </CardHeader>
-//                 <CardContent>
-//                   <div className="space-y-4">
-//                     {[
-//                       { dept: "Computer Science", rate: "92%", color: "bg-primary" },
-//                       { dept: "Information Technology", rate: "88%", color: "bg-primary/80" },
-//                       { dept: "Electronics", rate: "84%", color: "bg-primary/60" },
-//                       { dept: "Mechanical", rate: "76%", color: "bg-primary/40" },
-//                     ].map((dept, index) => (
-//                       <div key={index} className="space-y-2">
-//                         <div className="flex justify-between text-sm">
-//                           <span>{dept.dept}</span>
-//                           <span className="font-medium">{dept.rate}</span>
-//                         </div>
-//                         <div className="h-2 bg-muted rounded">
-//                           <div 
-//                             className={`h-full ${dept.color} rounded`}
-//                             style={{ width: dept.rate }}
-//                           ></div>
-//                         </div>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </CardContent>
-//               </Card>
-//             </div>
-//           </TabsContent>
-
-//           <TabsContent value="reports" className="space-y-6">
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle>Generate Reports</CardTitle>
-//                 <CardDescription>
-//                   Create comprehensive placement reports and analytics
-//                 </CardDescription>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                   <Card className="border-2 hover:border-primary/50 transition-colors cursor-pointer">
-//                     <CardContent className="p-4 text-center">
-//                       <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
-//                       <h3 className="font-medium mb-1">Placement Statistics</h3>
-//                       <p className="text-sm text-muted-foreground mb-3">
-//                         Overall placement rates and trends
-//                       </p>
-//                       <Button size="sm" className="w-full">
-//                         Generate Report
-//                       </Button>
-//                     </CardContent>
-//                   </Card>
-
-//                   <Card className="border-2 hover:border-primary/50 transition-colors cursor-pointer">
-//                     <CardContent className="p-4 text-center">
-//                       <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-//                       <h3 className="font-medium mb-1">Student Performance</h3>
-//                       <p className="text-sm text-muted-foreground mb-3">
-//                         Individual student readiness analysis
-//                       </p>
-//                       <Button size="sm" className="w-full">
-//                         Generate Report
-//                       </Button>
-//                     </CardContent>
-//                   </Card>
-
-//                   <Card className="border-2 hover:border-primary/50 transition-colors cursor-pointer">
-//                     <CardContent className="p-4 text-center">
-//                       <Building2 className="h-8 w-8 text-primary mx-auto mb-2" />
-//                       <h3 className="font-medium mb-1">Company Analysis</h3>
-//                       <p className="text-sm text-muted-foreground mb-3">
-//                         Hiring patterns and company performance
-//                       </p>
-//                       <Button size="sm" className="w-full">
-//                         Generate Report
-//                       </Button>
-//                     </CardContent>
-//                   </Card>
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </TabsContent>
-//         </Tabs>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default AdminDashboard;
-
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SimpleChart, SimpleDonutChart } from "@/components/ui/charts";
 import { 
   Users, 
-  Building2, 
   TrendingUp, 
-  Calendar,
   Search,
-  Filter,
   Download,
-  Plus,
   BarChart3,
-  Target
+  Target,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  PieChart
 } from "lucide-react";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from 'jspdf';
 
+interface StudentData {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  cgpa: number;
+  branch: string;
+  profile_completed: boolean;
+  technologies: string[];
+  projects: string[];
+  internships: string[];
+  experience: string;
+  resume_url: string;
+  certifications_urls: string[];
+  placement_status?: string;
+}
 
-const AdminDashboard = () => 
-  {
+const AdminDashboard = () => {
   const navigate = useNavigate();
   
-  // State for admin creation dialog
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({
-    fullName: "",
-    email: "",
-    role: "",
-    password: ""
+  // Real-time data states
+  const [students, setStudents] = useState<StudentData[]>([]);
+  const [totalRegisteredCount, setTotalRegisteredCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredStudents, setFilteredStudents] = useState<StudentData[]>([]);
+  
+  // Password change states
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
   });
-  const [dialogError, setDialogError] = useState("");
-  const [dialogSuccess, setDialogSuccess] = useState("");
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  // Debug: Log dialog state changes
-  console.log("Dialog state:", isDialogOpen);
+  // Load real-time student data
+  useEffect(() => {
+    fetchStudentData();
+    fetchTotalRegisteredCount();
+  }, []);
 
-  const handleLogout = async() => 
-  {
-    try{
-      const { error } = await supabase.auth.signOut();
-      if(error) throw error;
+  // Filter students based on search term
+  useEffect(() => {
+    const filtered = students.filter(student => 
+      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.branch?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredStudents(filtered);
+  }, [students, searchTerm]);
 
-      navigate("/login");
-    }
-    catch (err) 
-    {
-    console.error("Error logging out:", err.message);
+  const fetchStudentData = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Fetching all registered students...');
+      
+      // Try multiple approaches to get student count
+      let allStudents: StudentData[] = [];
+      
+      // Method 1: Get from student_details table
+      const { data: studentDetails, error: detailsError } = await supabase
+        .from('student_details')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (studentDetails && !detailsError) {
+        allStudents = studentDetails;
+        console.log(`📊 Found ${studentDetails.length} students with profile details`);
+      }
+
+      // Method 2: Create a more comprehensive approach 
+      // Since we might not have access to auth.users, let's use a different strategy
+
+      // Method 3: If still no data, try a simple count query
+      if (allStudents.length === 0) {
+        const { count, error: countError } = await supabase
+          .from('student_details')
+          .select('*', { count: 'exact', head: true });
+          
+        console.log(`� Count query result: ${count} students`);
+        
+        if (count && count > 0) {
+          // Create placeholder entries for the count
+          const placeholderStudents: StudentData[] = Array.from({ length: count }, (_, index) => ({
+            id: `placeholder-${index}`,
+            name: `Student ${index + 1}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            branch: 'Not Specified',
+            cgpa: null,
+            profile_completed: false,
+            technologies: [],
+            projects: [],
+            internships: [],
+            experience: '',
+            resume_url: '',
+            certifications_urls: []
+          }));
+          
+          allStudents = placeholderStudents;
+        }
+      }
+      
+      console.log(`✅ Total students to display: ${allStudents.length}`);
+      setStudents(allStudents);
+      
+    } catch (error) {
+      console.error('❌ Error fetching student data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCreateAdmin = async (e: React.FormEvent) => {
+  const fetchTotalRegisteredCount = async () => {
+    try {
+      // Method 1: Check if there's a profiles table or users table
+      const { count: profilesCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (profilesCount && profilesCount > 0) {
+        console.log(`📊 Found ${profilesCount} registered users in profiles table`);
+        setTotalRegisteredCount(profilesCount);
+        return;
+      }
+
+      // Method 2: Use student_details count as fallback
+      const { count: studentsCount } = await supabase
+        .from('student_details')
+        .select('*', { count: 'exact', head: true });
+      
+      console.log(`📊 Found ${studentsCount || 0} students in student_details table`);
+      setTotalRegisteredCount(studentsCount || 0);
+
+    } catch (error) {
+      console.error('❌ Error fetching total count:', error);
+      setTotalRegisteredCount(0);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate("/login");
+    } catch (err: any) {
+      console.error("Error logging out:", err.message);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setDialogError("");
-    setDialogSuccess("");
-    setIsCreating(true);
+    setPasswordError("");
+    setPasswordSuccess("");
+    setIsChangingPassword(true);
 
     try {
       // Validate form
-      if (!newAdmin.fullName || !newAdmin.email || !newAdmin.role || !newAdmin.password) {
-        setDialogError("Please fill in all fields.");
-        setIsCreating(false);
+      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        setPasswordError("Please fill in all fields.");
+        setIsChangingPassword(false);
         return;
       }
 
-      if (newAdmin.password.length < 6) {
-        setDialogError("Password must be at least 6 characters long.");
-        setIsCreating(false);
+      if (passwordForm.newPassword.length < 6) {
+        setPasswordError("New password must be at least 6 characters long.");
+        setIsChangingPassword(false);
         return;
       }
 
-      // Create admin account using Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: newAdmin.email,
-        password: newAdmin.password,
-        options: {
-          data: {
-            full_name: newAdmin.fullName,
-            role: newAdmin.role,
-          }
-        }
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordError("New passwords do not match.");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Update password using Supabase Auth
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
       });
 
       if (error) {
-        setDialogError(error.message);
-        setIsCreating(false);
+        setPasswordError(error.message);
+        setIsChangingPassword(false);
         return;
       }
 
-      if (data.user) {
-        setDialogSuccess(`Admin account created successfully! ${data.user.email_confirmed_at ? 'Account is ready to use.' : 'Verification email sent to ' + newAdmin.email}`);
-        
-        // Reset form
-        setNewAdmin({
-          fullName: "",
-          email: "",
-          role: "",
-          password: ""
-        });
+      setPasswordSuccess("Password updated successfully!");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
 
-        // Close dialog after 2 seconds
-        setTimeout(() => {
-          setIsDialogOpen(false);
-          setDialogSuccess("");
-        }, 2000);
-      }
+      setTimeout(() => {
+        setPasswordSuccess("");
+      }, 3000);
+
     } catch (err: any) {
-      setDialogError("Failed to create admin account. Please try again.");
-      console.error("Admin creation error:", err);
+      setPasswordError("Failed to update password. Please try again.");
+      console.error("Password change error:", err);
     } finally {
-      setIsCreating(false);
+      setIsChangingPassword(false);
     }
   };
 
-  const resetDialog = () => {
-    console.log("Reset dialog function called");
-    setNewAdmin({
-      fullName: "",
-      email: "",
-      role: "",
-      password: ""
-    });
-    setDialogError("");
-    setDialogSuccess("");
+  // Calculate statistics from real student data
+  const getStatistics = () => {
+    const totalStudents = Math.max(totalRegisteredCount, students.length); // Use the higher count
+    const completedProfiles = students.filter(s => s.profile_completed).length;
+    const placedStudents = students.filter(s => s.placement_status === 'placed').length;
+    const placementRate = totalStudents > 0 ? (placedStudents / totalStudents * 100).toFixed(1) : "0";
+    
+    return { totalStudents, completedProfiles, placedStudents, placementRate };
+  };
+
+  // Generate branch-wise data for charts
+  const getBranchWiseData = () => {
+    const branchCounts = students.reduce((acc, student) => {
+      const branch = student.branch || 'Not Specified';
+      acc[branch] = (acc[branch] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+    
+    return Object.entries(branchCounts).map(([branch, count], index) => ({
+      label: branch,
+      value: count,
+      color: colors[index % colors.length]
+    }));
+  };
+
+  // Export reports functionality
+  const exportPlacementStats = async () => {
+    try {
+      const pdf = new jsPDF();
+      const { totalStudents, placedStudents, placementRate } = getStatistics();
+      const branchData = getBranchWiseData();
+
+      // Title
+      pdf.setFontSize(20);
+      pdf.text('Placement Statistics Report', 20, 30);
+
+      // Date
+      pdf.setFontSize(12);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 50);
+
+      // Statistics
+      pdf.setFontSize(16);
+      pdf.text('Overall Statistics', 20, 80);
+      pdf.setFontSize(12);
+      pdf.text(`Total Students: ${totalStudents}`, 30, 100);
+      pdf.text(`Students Placed: ${placedStudents}`, 30, 115);
+      pdf.text(`Placement Rate: ${placementRate}%`, 30, 130);
+
+      // Branch-wise data
+      pdf.setFontSize(16);
+      pdf.text('Branch-wise Distribution', 20, 160);
+      pdf.setFontSize(12);
+      let yPos = 180;
+      branchData.forEach((branch) => {
+        pdf.text(`${branch.label}: ${branch.value} students`, 30, yPos);
+        yPos += 15;
+      });
+
+      pdf.save('placement-statistics.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
+
+  const exportStudentPerformance = async () => {
+    try {
+      const pdf = new jsPDF();
+
+      // Title
+      pdf.setFontSize(20);
+      pdf.text('Student Performance Report', 20, 30);
+
+      // Date
+      pdf.setFontSize(12);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 50);
+
+      // Student performance data
+      pdf.setFontSize(16);
+      pdf.text('Top Performing Students', 20, 80);
+      pdf.setFontSize(12);
+
+      const topStudents = students
+        .filter(s => s.cgpa && s.cgpa > 0)
+        .sort((a, b) => (b.cgpa || 0) - (a.cgpa || 0))
+        .slice(0, 10);
+
+      let yPos = 100;
+      topStudents.forEach((student, index) => {
+        pdf.text(`${index + 1}. ${student.name || 'N/A'} - CGPA: ${student.cgpa || 'N/A'}`, 30, yPos);
+        yPos += 15;
+      });
+
+      pdf.save('student-performance.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   };
 
   return (
@@ -476,13 +361,25 @@ const AdminDashboard = () =>
               <p className="text-lg text-gray-600 font-medium mt-1">Placement Officer Portal</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" className="border-2 border-blue-400 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105">
+              <Button 
+                onClick={() => {
+                  fetchStudentData();
+                  fetchTotalRegisteredCount();
+                }}
+                variant="outline" 
+                disabled={loading}
+                className="border-2 border-green-400 text-green-600 hover:bg-green-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                {loading ? 'Loading...' : 'Refresh Data'}
+              </Button>
+              <Button 
+                onClick={exportPlacementStats}
+                variant="outline" 
+                className="border-2 border-blue-400 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export Reports
-              </Button>
-              <Button className="bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-semibold rounded-lg transform transition-all duration-300 hover:scale-105 hover:shadow-lg">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Placement Drive
               </Button>
               <Button
                 onClick={handleLogout}
@@ -492,49 +389,49 @@ const AdminDashboard = () =>
             </div>
           </div>
 
+          {/* Debug Information */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold text-yellow-800 mb-2">Debug Information:</h3>
+            <div className="text-sm text-yellow-700 space-y-1">
+              <p>Loading State: {loading ? 'Loading...' : 'Loaded'}</p>
+              <p>Total Registered Students: {totalRegisteredCount}</p>
+              <p>Students with Profiles: {students.length}</p>
+              <p>Filtered Students: {filteredStudents.length}</p>
+              <p>Completed Profiles: {students.filter(s => s.profile_completed).length}</p>
+              <p>Last Fetch: {new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
+
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                title: "Total Students",
-                value: "1,247",
-                subtitle: "+12% from last year",
-                icon: Users,
-                gradient: "from-blue-400 to-blue-600",
-                bgGradient: "from-blue-50 to-blue-100"
-              },
-              {
-                title: "Placement Rate",
-                value: "87.5%",
-                subtitle: "+3.2% from last year",
-                icon: TrendingUp,
-                gradient: "from-green-400 to-green-600",
-                bgGradient: "from-green-50 to-green-100"
-              },
-              // {
-              //   title: "Active Companies",
-              //   value: "156",
-              //   subtitle: "+23 new partnerships",
-              //   icon: Building2,
-              //   gradient: "from-purple-400 to-purple-600",
-              //   bgGradient: "from-purple-50 to-purple-100"
-              // },
-              // {
-              //   title: "Upcoming Drives",
-              //   value: "18",
-              //   subtitle: "This month",
-              //   icon: Calendar,
-              //   gradient: "from-pink-400 to-pink-600",
-              //   bgGradient: "from-pink-50 to-pink-100"
-              // }
-            ].map((metric, index) => (
-              <Card key={metric.title} className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 bg-gradient-to-br ${metric.bgGradient} group cursor-pointer`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-semibold text-gray-700 group-hover:text-gray-800 transition-colors">
-                    {metric.title}
-                  </CardTitle>
-                  <div className={`p-2 rounded-full bg-gradient-to-r ${metric.gradient} transform transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110`}>
-                    <metric.icon className="h-4 w-4 text-white" />
+            {(() => {
+              const { totalStudents, placementRate } = getStatistics();
+              return [
+                {
+                  title: "Total Students",
+                  value: totalStudents.toString(),
+                  subtitle: `${students.filter(s => s.profile_completed).length} profiles completed`,
+                  icon: Users,
+                  gradient: "from-blue-400 to-blue-600",
+                  bgGradient: "from-blue-50 to-blue-100"
+                },
+                {
+                  title: "Placement Rate",
+                  value: `${placementRate}%`,
+                  subtitle: `${students.filter(s => s.placement_status === 'placed').length} students placed`,
+                  icon: TrendingUp,
+                  gradient: "from-green-400 to-green-600",
+                  bgGradient: "from-green-50 to-green-100"
+                }
+              ];
+            })().map((metric, index) => (
+              <Card key={index} className="border-0 shadow-lg hover:shadow-2xl transition-all duration-500 group cursor-pointer">
+                <CardHeader className={`bg-gradient-to-r ${metric.bgGradient} border-b group-hover:scale-105 transition-transform duration-300`}>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg text-gray-800 group-hover:text-gray-900 transition-colors">
+                      {metric.title}
+                    </CardTitle>
+                    <metric.icon className={`h-6 w-6 bg-gradient-to-r ${metric.gradient} text-transparent bg-clip-text`} />
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -563,6 +460,7 @@ const AdminDashboard = () =>
               ))}
             </TabsList>
 
+            {/* Students Tab */}
             <TabsContent value="students" className="space-y-6">
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
                 <CardHeader>
@@ -580,464 +478,348 @@ const AdminDashboard = () =>
                         <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
                         <Input 
                           placeholder="Search students..." 
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-9 w-64 border-2 border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 rounded-lg" 
                         />
                       </div>
-                      <Button variant="outline" size="icon" className="border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 rounded-lg">
-                        <Filter className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      { name: "John Doe", id: "CS2020001", cgpa: "8.5", score: "85", status: "Ready" },
-                      { name: "Jane Smith", id: "CS2020002", cgpa: "9.1", score: "92", status: "Excellent" },
-                      { name: "Mike Johnson", id: "CS2020003", cgpa: "7.8", score: "76", status: "Needs Improvement" },
-                      { name: "Sarah Wilson", id: "CS2020004", cgpa: "8.9", score: "88", status: "Ready" },
-                    ].map((student, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl hover:shadow-md transition-all duration-300 transform hover:scale-105">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-white" />
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600">Loading students...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredStudents.map((student) => {
+                        const getStatus = (student: StudentData) => {
+                          if (!student.profile_completed) return { text: "Incomplete", color: "bg-gradient-to-r from-orange-400 to-red-400" };
+                          if (student.placement_status === 'placed') return { text: "Placed", color: "bg-gradient-to-r from-green-400 to-blue-400" };
+                          if ((student.cgpa || 0) >= 8.5) return { text: "Excellent", color: "bg-gradient-to-r from-blue-400 to-purple-400" };
+                          if ((student.cgpa || 0) >= 7.0) return { text: "Good", color: "bg-gradient-to-r from-blue-400 to-purple-400" };
+                          return { text: "Needs Improvement", color: "bg-gradient-to-r from-orange-400 to-red-400" };
+                        };
+                        
+                        const status = getStatus(student);
+                        
+                        return (
+                          <div key={student.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl hover:shadow-md transition-all duration-300 transform hover:scale-105">
+                            <div className="flex items-center gap-4">
+                              <div className="h-12 w-12 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                                <Users className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800">{student.name || 'N/A'}</p>
+                                <p className="text-sm text-gray-600">ID: {student.id}</p>
+                                <p className="text-xs text-gray-500">{student.branch || 'Branch not specified'}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-600">CGPA</p>
+                                <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                  {student.cgpa ? student.cgpa.toFixed(1) : 'N/A'}
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-600">Projects</p>
+                                <p className="text-lg font-bold text-gray-800">{student.projects?.length || 0}</p>
+                              </div>
+                              <Badge className={`px-3 py-1 font-semibold text-white ${status.color}`}>
+                                {status.text}
+                              </Badge>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="border-2 border-blue-300 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+                              >
+                                View Details
+                              </Button>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-800">{student.name}</p>
-                            <p className="text-sm text-gray-600">{student.id}</p>
-                          </div>
+                        );
+                      })}
+                      {filteredStudents.length === 0 && !loading && (
+                        <div className="text-center py-8">
+                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600">No students found</p>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-gray-600">CGPA</p>
-                            <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{student.cgpa}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-gray-600">Score</p>
-                            <p className="text-lg font-bold text-gray-800">{student.score}/100</p>
-                          </div>
-                          <Badge 
-                            className={`px-3 py-1 font-semibold ${
-                              student.status === "Excellent" ? "bg-gradient-to-r from-green-400 to-blue-400 text-white" : 
-                              student.status === "Ready" ? "bg-gradient-to-r from-blue-400 to-purple-400 text-white" : 
-                              "bg-gradient-to-r from-orange-400 to-red-400 text-white"
-                            }`}
-                          >
-                            {student.status}
-                          </Badge>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="border-2 border-blue-300 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
-                          >
-                            View Details
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Admins Tab - Password Change */}
             <TabsContent value="admins" className="space-y-6">
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
+                <CardHeader>
+                  <div>
+                    <CardTitle className="text-xl bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+                      <Lock className="h-5 w-5" />
+                      Admin Settings
+                    </CardTitle>
+                    <CardDescription className="text-gray-600 font-medium">
+                      Change your admin password and manage credentials
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <form onSubmit={handlePasswordChange} className="space-y-6 max-w-md">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword" className="text-gray-700 font-semibold">
+                        Current Password
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          type={showPasswords.current ? "text" : "password"}
+                          placeholder="Enter current password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                          className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg pr-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                          onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})}
+                        >
+                          {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword" className="text-gray-700 font-semibold">
+                        New Password
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          type={showPasswords.new ? "text" : "password"}
+                          placeholder="Enter new password (min 6 chars)"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                          className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg pr-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                          onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                        >
+                          {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-gray-700 font-semibold">
+                        Confirm New Password
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={showPasswords.confirm ? "text" : "password"}
+                          placeholder="Confirm new password"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                          className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg pr-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                          onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})}
+                        >
+                          {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {passwordSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-700">
+                          {passwordSuccess}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {passwordError && (
+                      <Alert className="border-red-200 bg-red-50">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-700">
+                          {passwordError}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <Button 
+                      type="submit" 
+                      disabled={isChangingPassword}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isChangingPassword ? "Updating Password..." : "Update Password"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Reports Tab */}
+            <TabsContent value="reports" className="space-y-6">
+              {/* Placement Statistics Report */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-xl bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
-                        Admin Management
+                      <CardTitle className="text-xl bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Placement Statistics Report
                       </CardTitle>
                       <CardDescription className="text-gray-600 font-medium">
-                        Manage admin users and their permissions
+                        Branch-wise placement analytics and statistics
                       </CardDescription>
                     </div>
-                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                      console.log("Dialog onOpenChange called with:", open);
-                      setIsDialogOpen(open);
-                      if (open) {
-                        resetDialog();
-                      }
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Admin
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px] bg-white">
-                        <DialogHeader>
-                          <DialogTitle className="text-xl bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
-                            Create New Admin Account
-                          </DialogTitle>
-                          <DialogDescription className="text-gray-600">
-                            Fill in the details to create a new admin account. The admin will receive login credentials via email.
-                          </DialogDescription>
-                        </DialogHeader>
-                        
-                        <form onSubmit={handleCreateAdmin} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="fullName" className="text-gray-700 font-semibold">
-                              Full Name
-                            </Label>
-                            <Input
-                              id="fullName"
-                              type="text"
-                              placeholder="Enter admin's full name"
-                              value={newAdmin.fullName}
-                              onChange={(e) => setNewAdmin({...newAdmin, fullName: e.target.value})}
-                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
-                              required
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-700 font-semibold">
-                              Email Address
-                            </Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              placeholder="Enter admin's email"
-                              value={newAdmin.email}
-                              onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})}
-                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
-                              required
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="role" className="text-gray-700 font-semibold">
-                              Admin Role
-                            </Label>
-                            <select 
-                              id="role"
-                              value={newAdmin.role}
-                              onChange={(e) => setNewAdmin({...newAdmin, role: e.target.value})}
-                              className="w-full border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg px-3 py-2 text-gray-800 bg-white"
-                              required
-                            >
-                              <option value="">Select Role</option>
-                              <option value="admin">Admin</option>
-                              <option value="coordinator">Placement Coordinator</option>
-                              <option value="super_admin">Super Admin</option>
-                            </select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="password" className="text-gray-700 font-semibold">
-                              Temporary Password
-                            </Label>
-                            <Input
-                              id="password"
-                              type="password"
-                              placeholder="Create temporary password (min 6 chars)"
-                              value={newAdmin.password}
-                              onChange={(e) => setNewAdmin({...newAdmin, password: e.target.value})}
-                              className="border-2 border-gray-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
-                              required
-                            />
-                          </div>
-
-                          {/* Success Message */}
-                          {dialogSuccess && (
-                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                              <p className="text-sm text-green-600 font-medium">
-                                {dialogSuccess}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Error Message */}
-                          {dialogError && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                              <p className="text-sm text-red-600 font-medium">
-                                {dialogError}
-                              </p>
-                            </div>
-                          )}
-
-                          <DialogFooter className="gap-2">
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              onClick={() => setIsDialogOpen(false)}
-                              className="border-2 border-gray-300 text-gray-600 hover:bg-gray-50"
-                            >
-                              Cancel
-                            </Button>
-                            <Button 
-                              type="submit" 
-                              disabled={isCreating}
-                              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isCreating ? "Creating..." : "Create Admin"}
-                            </Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                    <Button 
+                      onClick={exportPlacementStats}
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      { name: "John Admin", email: "admin@gmail.com", role: "Super Admin", status: "Active", lastLogin: "2 hours ago" },
-                      { name: "Jane Coordinator", email: "jane.admin@college.edu", role: "Placement Coordinator", status: "Active", lastLogin: "1 day ago" },
-                      { name: "Mike Officer", email: "mike.admin@college.edu", role: "Admin", status: "Inactive", lastLogin: "1 week ago" },
-                    ].map((admin, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-xl hover:shadow-md transition-all duration-300 transform hover:scale-105">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800">{admin.name}</p>
-                            <p className="text-sm text-gray-600">{admin.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-gray-600">Role</p>
-                            <p className="text-sm font-bold text-gray-800">{admin.role}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-gray-600">Last Login</p>
-                            <p className="text-sm text-gray-700">{admin.lastLogin}</p>
-                          </div>
-                          <Badge 
-                            className={`px-3 py-1 font-semibold ${
-                              admin.status === "Active" ? "bg-gradient-to-r from-green-400 to-blue-400 text-white" : 
-                              "bg-gradient-to-r from-gray-400 to-gray-500 text-white"
-                            }`}
-                          >
-                            {admin.status}
-                          </Badge>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="border-2 border-purple-300 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
-                            >
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="border-2 border-red-300 text-red-600 hover:bg-red-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                    <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-                      <Users className="h-5 w-5 text-purple-600" />
-                      Add New Admin
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <Input 
-                        placeholder="Full Name" 
-                        className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
-                      />
-                      <Input 
-                        placeholder="Email Address" 
-                        type="email"
-                        className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg"
-                      />
-                      <select className="border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg px-3 py-2 text-gray-800 bg-white">
-                        <option value="">Select Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="coordinator">Placement Coordinator</option>
-                        <option value="super_admin">Super Admin</option>
-                      </select>
-                      <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transform transition-all duration-300 hover:scale-105">
-                        Create Admin
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-3">
-                      <strong>Note:</strong> New admin will receive an email with login credentials and setup instructions.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* <TabsContent value="companies" className="space-y-6">
-              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
-                <CardHeader>
-                  <CardTitle className="text-xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                    Company Partnerships
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 font-medium">
-                    Manage placement drives and company relationships
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[
-                      { name: "TCS", drives: 3, hired: 45, package: "7.5 LPA", status: "Active", gradient: "from-blue-50 to-blue-100" },
-                      { name: "Infosys", drives: 2, hired: 32, package: "6.5 LPA", status: "Active", gradient: "from-green-50 to-green-100" },
-                      { name: "Wipro", drives: 1, hired: 18, package: "6.0 LPA", status: "Scheduled", gradient: "from-purple-50 to-purple-100" },
-                      { name: "Accenture", drives: 2, hired: 28, package: "8.0 LPA", status: "Active", gradient: "from-pink-50 to-pink-100" },
-                    ].map((company, index) => (
-                      <Card key={index} className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 bg-gradient-to-br ${company.gradient} group cursor-pointer`}>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
-                                <Building2 className="h-5 w-5 text-white" />
-                              </div>
-                              <span className="font-bold text-gray-800 text-lg">{company.name}</span>
-                            </div>
-                            <Badge 
-                              className={`px-3 py-1 font-semibold ${
-                                company.status === "Active" ? "bg-gradient-to-r from-green-400 to-blue-400 text-white" : 
-                                "bg-gradient-to-r from-yellow-400 to-orange-400 text-white"
-                              }`}
-                            >
-                              {company.status}
-                            </Badge>
-                          </div>
-                          <div className="space-y-3 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 font-medium">Drives:</span>
-                              <span className="font-bold text-gray-800">{company.drives}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 font-medium">Hired:</span>
-                              <span className="font-bold text-gray-800">{company.hired}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 font-medium">Package:</span>
-                              <span className="font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">{company.package}</span>
-                            </div>
-                          </div>
-                          <Button className="w-full mt-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold rounded-lg transform transition-all duration-300 hover:scale-105">
-                            Manage Drives
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent> */}
-
-            {/* <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
-                        <BarChart3 className="h-5 w-5 text-white" />
-                      </div>
-                      <span className="bg-gradient-to-r from-blue-700 to-purple-600 bg-clip-text text-transparent">
-                        Placement Trends
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-center justify-center text-gray-600 font-medium bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
-                      Interactive placement trend chart will be displayed here
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="p-2 rounded-full bg-gradient-to-r from-green-500 to-blue-500">
-                        <Target className="h-5 w-5 text-white" />
-                      </div>
-                      <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                        Department-wise Performance
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Statistics Summary */}
                     <div className="space-y-4">
-                      {[
-                        { dept: "Computer Science", rate: "92%", color: "bg-gradient-to-r from-blue-500 to-purple-500" },
-                        { dept: "Information Technology", rate: "88%", color: "bg-gradient-to-r from-green-500 to-blue-500" },
-                        { dept: "Electronics", rate: "84%", color: "bg-gradient-to-r from-purple-500 to-pink-500" },
-                        { dept: "Mechanical", rate: "76%", color: "bg-gradient-to-r from-orange-500 to-red-500" },
-                      ].map((dept, index) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-medium text-gray-700">{dept.dept}</span>
-                            <span className="font-bold text-gray-800">{dept.rate}</span>
+                      <h3 className="text-lg font-semibold text-gray-800">Overall Statistics</h3>
+                      <div className="space-y-3">
+                        {(() => {
+                          const { totalStudents, placedStudents, placementRate } = getStatistics();
+                          return [
+                            { label: "Total Students Registered", value: totalStudents },
+                            { label: "Students Placed", value: placedStudents },
+                            { label: "Placement Rate", value: `${placementRate}%` },
+                            { label: "Profiles Completed", value: students.filter(s => s.profile_completed).length }
+                          ];
+                        })().map((stat, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
+                            <span className="text-gray-700 font-medium">{stat.label}</span>
+                            <span className="text-xl font-bold text-blue-600">{stat.value}</span>
                           </div>
-                          <div className="h-3 bg-gray-200 rounded-full">
-                            <div 
-                              className={`h-full ${dept.color} rounded-full`}
-                              style={{ width: dept.rate }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent> */}
+                    
+                    {/* Branch-wise Chart */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Branch-wise Distribution</h3>
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-100 p-4 rounded-lg">
+                        {(() => {
+                          const branchData = getBranchWiseData();
+                          return branchData.length > 0 ? (
+                            <SimpleDonutChart data={branchData} />
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">No data available</div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <TabsContent value="reports" className="space-y-6">
+              {/* Student Performance Report */}
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500">
                 <CardHeader>
-                  <CardTitle className="text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    Generate Reports
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 font-medium">
-                    Create comprehensive placement reports and analytics
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Student Performance Report
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 font-medium">
+                        Individual student performance and analytics
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={exportStudentPerformance}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[
-                      { 
-                        icon: BarChart3, 
-                        title: "Placement Statistics", 
-                        description: "Overall placement rates and trends",
-                        gradient: "from-blue-50 to-blue-100",
-                        iconGradient: "from-blue-500 to-purple-500"
-                      },
-                      { 
-                        icon: Users, 
-                        title: "Student Performance", 
-                        description: "Individual student readiness analysis",
-                        gradient: "from-green-50 to-green-100",
-                        iconGradient: "from-green-500 to-blue-500"
-                      },
-                      { 
-                        icon: Building2, 
-                        title: "Company Analysis", 
-                        description: "Hiring patterns and company performance",
-                        gradient: "from-purple-50 to-purple-100",
-                        iconGradient: "from-purple-500 to-pink-500"
-                      }
-                    ].map((report, index) => (
-                      <Card key={index} className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 bg-gradient-to-br ${report.gradient} group cursor-pointer`}>
-                        <CardContent className="p-6 text-center">
-                          <div className={`p-3 rounded-full bg-gradient-to-r ${report.iconGradient} mx-auto mb-4 w-fit transform transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110`}>
-                            <report.icon className="h-8 w-8 text-white" />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Performers */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Top Performers (CGPA)</h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {students
+                          .filter(s => s.cgpa && s.cgpa > 0)
+                          .sort((a, b) => (b.cgpa || 0) - (a.cgpa || 0))
+                          .slice(0, 10)
+                          .map((student, index) => (
+                            <div key={student.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                  {index + 1}
+                                </div>
+                                <span className="text-gray-700 font-medium">{student.name}</span>
+                              </div>
+                              <Badge className="bg-gradient-to-r from-purple-400 to-pink-400 text-white">
+                                {student.cgpa?.toFixed(2)} CGPA
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                    
+                    {/* Performance Metrics */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Performance Metrics</h3>
+                      <div className="space-y-3">
+                        {[
+                          { 
+                            label: "High Performers (8.5+ CGPA)", 
+                            value: students.filter(s => (s.cgpa || 0) >= 8.5).length 
+                          },
+                          { 
+                            label: "Good Performers (7.0-8.5 CGPA)", 
+                            value: students.filter(s => (s.cgpa || 0) >= 7.0 && (s.cgpa || 0) < 8.5).length 
+                          },
+                          { 
+                            label: "Need Improvement (<7.0 CGPA)", 
+                            value: students.filter(s => (s.cgpa || 0) > 0 && (s.cgpa || 0) < 7.0).length 
+                          },
+                          { 
+                            label: "With Projects", 
+                            value: students.filter(s => s.projects && s.projects.length > 0).length 
+                          }
+                        ].map((metric, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                            <span className="text-gray-700 font-medium">{metric.label}</span>
+                            <span className="text-xl font-bold text-purple-600">{metric.value}</span>
                           </div>
-                          <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-gray-900 transition-colors">{report.title}</h3>
-                          <p className="text-sm text-gray-600 mb-4 group-hover:text-gray-700 transition-colors">
-                            {report.description}
-                          </p>
-                          <Button className={`w-full bg-gradient-to-r ${report.iconGradient} hover:opacity-90 text-white font-bold rounded-lg transform transition-all duration-300 hover:scale-105`}>
-                            Generate Report
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

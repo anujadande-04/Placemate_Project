@@ -45,11 +45,12 @@ const Signup = () => {
     }
 
     try {
-      // Sign up the user
+      // Sign up the user with email confirmation redirect
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
         options: {
+          emailRedirectTo: `${window.location.origin}/confirm-email`,
           data: {
             full_name: fullName,
             role: userType, // Set the role during signup
