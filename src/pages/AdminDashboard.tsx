@@ -362,18 +362,6 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                onClick={() => {
-                  fetchStudentData();
-                  fetchTotalRegisteredCount();
-                }}
-                variant="outline" 
-                disabled={loading}
-                className="border-2 border-green-400 text-green-600 hover:bg-green-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
-              >
-                <Target className="h-4 w-4 mr-2" />
-                {loading ? 'Loading...' : 'Refresh Data'}
-              </Button>
-              <Button 
                 onClick={exportPlacementStats}
                 variant="outline" 
                 className="border-2 border-blue-400 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
@@ -389,19 +377,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Debug Information */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-yellow-800 mb-2">Debug Information:</h3>
-            <div className="text-sm text-yellow-700 space-y-1">
-              <p>Loading State: {loading ? 'Loading...' : 'Loaded'}</p>
-              <p>Total Registered Students: {totalRegisteredCount}</p>
-              <p>Students with Profiles: {students.length}</p>
-              <p>Filtered Students: {filteredStudents.length}</p>
-              <p>Completed Profiles: {students.filter(s => s.profile_completed).length}</p>
-              <p>Last Fetch: {new Date().toLocaleTimeString()}</p>
-            </div>
-          </div>
-
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(() => {
@@ -413,7 +388,7 @@ const AdminDashboard = () => {
                   subtitle: `${students.filter(s => s.profile_completed).length} profiles completed`,
                   icon: Users,
                   gradient: "from-blue-400 to-blue-600",
-                  bgGradient: "from-blue-50 to-blue-100"
+                  bgGradient: "from-gray-800 to-black"
                 },
                 {
                   title: "Placement Rate",
@@ -421,24 +396,24 @@ const AdminDashboard = () => {
                   subtitle: `${students.filter(s => s.placement_status === 'placed').length} students placed`,
                   icon: TrendingUp,
                   gradient: "from-green-400 to-green-600",
-                  bgGradient: "from-green-50 to-green-100"
+                  bgGradient: "from-gray-800 to-black"
                 }
               ];
             })().map((metric, index) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-2xl transition-all duration-500 group cursor-pointer">
                 <CardHeader className={`bg-gradient-to-r ${metric.bgGradient} border-b group-hover:scale-105 transition-transform duration-300`}>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg text-gray-800 group-hover:text-gray-900 transition-colors">
+                    <CardTitle className="text-lg text-white group-hover:text-gray-200 transition-colors">
                       {metric.title}
                     </CardTitle>
                     <metric.icon className={`h-6 w-6 bg-gradient-to-r ${metric.gradient} text-transparent bg-clip-text`} />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">
+                <CardContent className="bg-gradient-to-r from-gray-800 to-black">
+                  <div className="text-3xl font-bold text-white group-hover:text-gray-200 transition-colors">
                     {metric.value}
                   </div>
-                  <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors mt-1">
+                  <p className="text-sm text-gray-300 group-hover:text-gray-200 transition-colors mt-1">
                     {metric.subtitle}
                   </p>
                 </CardContent>
