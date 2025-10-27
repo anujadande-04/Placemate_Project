@@ -20,8 +20,15 @@ const EmailConfirmation = () => {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
+        console.log('EmailConfirmation: Starting confirmation process');
+        console.log('Current URL:', window.location.href);
+        console.log('URL hash:', window.location.hash);
+        console.log('Search params:', Object.fromEntries(searchParams.entries()));
+        
         // First try to handle any auth hash from the URL (Supabase sends tokens in URL fragment)
         const { data, error } = await supabase.auth.getSession();
+        
+        console.log('Current session:', { data, error });
         
         if (error) {
           console.error('Session error:', error);
@@ -35,8 +42,11 @@ const EmailConfirmation = () => {
         const tokenHash = searchParams.get('token_hash');
         const type = searchParams.get('type');
 
+        console.log('URL parameters:', { accessToken, refreshToken, tokenHash, type });
+
         // Handle different confirmation scenarios
         if (type === 'signup' || accessToken || tokenHash) {
+          console.log('Processing confirmation link...');
           // This is a confirmation link
           if (data?.session?.user) {
             setUserEmail(data.session.user.email || '');
@@ -75,9 +85,13 @@ const EmailConfirmation = () => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', { event, session });
       if (event === 'SIGNED_IN' && session?.user) {
+        console.log('User signed in via email confirmation');
         setUserEmail(session.user.email || '');
         setConfirmationStatus('success');
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed during confirmation');
       }
     });
 

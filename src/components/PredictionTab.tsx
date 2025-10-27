@@ -26,7 +26,10 @@ import {
   ArrowUp,
   ArrowDown,
   Brain,
-  Rocket
+  Rocket,
+  FileText,
+  Layout,
+  AlertTriangle
 } from "lucide-react";
 
 interface PredictionTabProps {
@@ -121,23 +124,66 @@ const PredictionTab: React.FC<PredictionTabProps> = ({ studentDetails, user }) =
         sampleText: experienceText.substring(0, 100)
       });
 
+      // Utility function to count valid internships/projects (filters out negative responses)
+      const countValidItems = (items: string[] | null | undefined): number => {
+        if (!items || !Array.isArray(items)) return 0;
+        
+        // Filter out negative responses like "no", "not any", "none", etc.
+        const negativeResponses = [
+          'no', 'not any', 'none', 'nil', 'nothing', 'not applicable', 'n/a', 'na',
+          'no internships', 'no projects', 'not done', 'haven\'t done', 'didn\'t do',
+          'zero', '0', 'not completed', 'not available', 'not yet', 'not started'
+        ];
+        
+        const validItems = items.filter(item => {
+          if (!item || typeof item !== 'string') return false;
+          
+          const itemLower = item.trim().toLowerCase();
+          
+          // Check if it's empty or just whitespace
+          if (itemLower.length === 0) return false;
+          
+          // Check if it matches any negative response
+          return !negativeResponses.some(negative => 
+            itemLower === negative || itemLower.includes(negative)
+          );
+        });
+        
+        return validItems.length;
+      };
+
+      const validInternshipsCount = countValidItems(studentDetails.internships);
+      const validProjectsCount = countValidItems(studentDetails.projects);
+
+      console.log('🔍 Project/Internship Analysis:', {
+        rawInternships: studentDetails.internships,
+        rawProjects: studentDetails.projects,
+        validInternshipsCount,
+        validProjectsCount
+      });
+
       // Prepare student profile for prediction
       const profile = {
         cgpa: studentDetails.cgpa || 0,
         branch: studentDetails.branch || 'Computer Science Engineering',
         workExp: workExpYears,
-        internships: studentDetails.internships?.length || 0,
-        projects: studentDetails.projects?.length || 0,
+        internships: validInternshipsCount,
+        projects: validProjectsCount,
         skills: studentDetails.technologies || [],
         resumeScore: studentDetails.resume_url ? 85 : 70, // Higher score if resume uploaded
-        softSkills: studentDetails.soft_skills || 4 // Use actual soft skills rating
+        softSkills: studentDetails.soft_skills || 4, // Use actual soft skills rating
+        atsScore: studentDetails.ats_score || undefined // Include ATS score if available
       };
 
       console.log('🔍 Student Profile for Prediction:', {
         ...profile,
         experienceText: experienceText.substring(0, 100) + (experienceText.length > 100 ? '...' : ''),
         hasResume: !!studentDetails.resume_url,
-        skillsCount: profile.skills.length
+        skillsCount: profile.skills.length,
+        atsScoreCategory: profile.atsScore ? 
+          (profile.atsScore >= 85 ? 'Excellent' : 
+           profile.atsScore >= 70 ? 'Good' : 
+           profile.atsScore >= 50 ? 'Decent' : 'Poor') : 'Not analyzed'
       });
 
       // Get predictions (now async with ML model)
@@ -406,6 +452,158 @@ const PredictionTab: React.FC<PredictionTabProps> = ({ studentDetails, user }) =
               </CardContent>
             </Card>
           </div>
+
+          {/* ATS Score Section */}
+          <Card className="border-2 bg-gradient-to-br from-cyan-50 to-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-cyan-700">
+                <Brain className="h-6 w-6" />
+                ATS Resume Analysis
+              </CardTitle>
+              <CardDescription>
+                Applicant Tracking System compatibility score and analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* ATS Score Display */}
+                <div className="flex items-center gap-4 p-4 bg-white rounded-lg border border-cyan-200">
+                  <div className="flex-shrink-0">
+                    {studentDetails?.ats_score ? (
+                      <div className="text-center">
+                        <div className={`text-3xl font-bold ${
+                          studentDetails.ats_score >= 85 ? 'text-green-600' :
+                          studentDetails.ats_score >= 70 ? 'text-blue-600' :
+                          studentDetails.ats_score >= 50 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {studentDetails.ats_score}
+                        </div>
+                        <div className="text-sm text-gray-600">ATS Score</div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-400">--</div>
+                        <div className="text-sm text-gray-500">Not Analyzed</div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-gray-700">Resume ATS Compatibility:</span>
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          studentDetails?.ats_score ? 
+                            (studentDetails.ats_score >= 85 ? 'border-green-600 text-green-600' :
+                             studentDetails.ats_score >= 70 ? 'border-blue-600 text-blue-600' :
+                             studentDetails.ats_score >= 50 ? 'border-yellow-600 text-yellow-600' :
+                             'border-red-600 text-red-600') :
+                            'border-gray-400 text-gray-400'
+                        }
+                      >
+                        {studentDetails?.ats_score ? 
+                          (studentDetails.ats_score >= 85 ? 'Excellent' :
+                           studentDetails.ats_score >= 70 ? 'Good' :
+                           studentDetails.ats_score >= 50 ? 'Decent' :
+                           'Needs Improvement') :
+                          'Not Analyzed'
+                        }
+                      </Badge>
+                    </div>
+                    <p className="text-gray-600 text-sm">
+                      {studentDetails?.ats_score ? 
+                        `Your resume scored ${studentDetails.ats_score}/100 for ATS compatibility. ${
+                          studentDetails.ats_score >= 85 ? 'Excellent! Your resume is highly optimized for ATS systems.' :
+                          studentDetails.ats_score >= 70 ? 'Good score! Minor improvements could boost your visibility.' :
+                          studentDetails.ats_score >= 50 ? 'Decent score, but there\'s room for improvement to increase your chances.' :
+                          'Your resume needs significant improvements to pass ATS filters effectively.'
+                        }` :
+                        'Upload your resume to get a detailed ATS compatibility analysis and improve your application success rate.'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* ATS Analysis Details */}
+                {studentDetails?.ats_analysis && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Detailed Analysis
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Skills Analysis */}
+                      {studentDetails.ats_analysis.skillsAnalysis && (
+                        <div className="p-3 bg-white rounded-lg border border-cyan-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Code className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium text-gray-700">Skills</span>
+                            <Badge variant="outline" className="ml-auto text-xs">
+                              {studentDetails.ats_analysis.skillsAnalysis.score}/100
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {studentDetails.ats_analysis.skillsAnalysis.analysis}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Experience Analysis */}
+                      {studentDetails.ats_analysis.experienceAnalysis && (
+                        <div className="p-3 bg-white rounded-lg border border-cyan-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Briefcase className="h-4 w-4 text-green-600" />
+                            <span className="font-medium text-gray-700">Experience</span>
+                            <Badge variant="outline" className="ml-auto text-xs">
+                              {studentDetails.ats_analysis.experienceAnalysis.score}/100
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {studentDetails.ats_analysis.experienceAnalysis.analysis}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Format Analysis */}
+                      {studentDetails.ats_analysis.formatAnalysis && (
+                        <div className="p-3 bg-white rounded-lg border border-cyan-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Layout className="h-4 w-4 text-purple-600" />
+                            <span className="font-medium text-gray-700">Format</span>
+                            <Badge variant="outline" className="ml-auto text-xs">
+                              {studentDetails.ats_analysis.formatAnalysis.score}/100
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {studentDetails.ats_analysis.formatAnalysis.analysis}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Key Improvements */}
+                    {studentDetails.ats_analysis.improvements && studentDetails.ats_analysis.improvements.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                          <Target className="h-4 w-4" />
+                          Key Improvements
+                        </h4>
+                        <div className="space-y-2">
+                          {studentDetails.ats_analysis.improvements.slice(0, 3).map((improvement, index) => (
+                            <div key={index} className="flex items-start gap-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-gray-700">{improvement}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Recommendations Tab */}

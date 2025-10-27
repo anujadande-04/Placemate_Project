@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SimpleChart, SimpleDonutChart } from "@/components/ui/charts";
 import { 
   Users, 
@@ -28,19 +29,20 @@ import jsPDF from 'jspdf';
 
 interface StudentData {
   id: string;
-  created_at: string;
-  updated_at: string;
-  name: string;
-  cgpa: number;
-  branch: string;
-  profile_completed: boolean;
-  technologies: string[];
-  projects: string[];
-  internships: string[];
-  experience: string;
-  resume_url: string;
-  certifications_urls: string[];
-  placement_status?: string;
+  created_at: string | null;
+  updated_at: string | null;
+  name: string | null;
+  cgpa: number | null;
+  branch: string | null;
+  profile_completed: boolean | null;
+  technologies: string[] | null;
+  projects: string[] | null;
+  internships: string[] | null;
+  experience: string | null;
+  resume_url: string | null;
+  certifications_urls: string[] | null;
+  ats_score: number | null;
+  ats_analysis: any | null;
 }
 
 const AdminDashboard = () => {
@@ -52,6 +54,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredStudents, setFilteredStudents] = useState<StudentData[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
+  const [showStudentDetails, setShowStudentDetails] = useState(false);
   
   // Password change states
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -72,7 +76,196 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStudentData();
     fetchTotalRegisteredCount();
+
+    // Set up auto-refresh every 30 seconds to catch new student registrations
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing student data...');
+      fetchStudentData();
+      fetchTotalRegisteredCount();
+    }, 30000); // 30 seconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(refreshInterval);
   }, []);
+
+  // Test function to add sample data (for testing purposes)
+  const addSampleStudents = async () => {
+    try {
+      console.log('🔍 Starting to add sample students...');
+      
+      // Check current user authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ Authentication check failed:', authError);
+        alert('Authentication failed. Please log in again.');
+        return;
+      }
+      console.log('✅ User authenticated:', user.email);
+      
+      // First, let's test database connectivity
+      console.log('🔧 Testing database connectivity...');
+      const { data: testData, error: testError } = await supabase
+        .from('student_details')
+        .select('count(*)', { count: 'exact', head: true });
+      
+      if (testError) {
+        console.error('❌ Database connectivity test failed:', testError);
+        alert('Database connection failed: ' + testError.message);
+        return;
+      }
+      
+      console.log('✅ Database connectivity test passed');
+      
+      // Create sample students one by one to avoid potential batch issues
+      const sampleStudents = [
+        {
+          id: `sample-${Date.now()}-1`,
+          name: "John Doe",
+          cgpa: 8.5,
+          branch: "Computer Science Engineering",
+          profile_completed: true,
+          technologies: ["React", "Node.js", "Python", "JavaScript", "MongoDB"],
+          projects: ["E-commerce Website", "Mobile App", "AI Chatbot"],
+          internships: ["Tech Company Summer Intern", "Microsoft Internship"],
+          experience: "1 year internship at ABC Tech Company with full-stack development",
+          resume_url: null,
+          certifications_urls: [],
+          ats_score: 88,
+          ats_analysis: {
+            overallScore: 88,
+            strengths: ["Strong technical keywords", "Well-structured sections", "Good formatting"],
+            weaknesses: ["Could add more soft skills"]
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: `sample-${Date.now()}-2`,
+          name: "Jane Smith",
+          cgpa: 9.2,
+          branch: "Information Technology",
+          profile_completed: true,
+          technologies: ["Java", "Spring Boot", "MySQL", "Angular", "Docker", "AWS"],
+          projects: ["Banking System", "Inventory Management", "Cloud Deployment"],
+          internships: ["Google Summer Internship", "Amazon Web Services Intern"],
+          experience: "2 years software development experience",
+          resume_url: null,
+          certifications_urls: [],
+          ats_score: 92,
+          ats_analysis: {
+            overallScore: 92,
+            strengths: ["Excellent keyword optimization", "Perfect formatting", "Complete sections"],
+            weaknesses: ["Minor improvements in readability"]
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: `sample-${Date.now()}-3`,
+          name: "Alex Johnson",
+          cgpa: 6.8,
+          branch: "Electronics Engineering",
+          profile_completed: true,
+          technologies: ["C++", "Arduino", "MATLAB", "IoT"],
+          projects: ["IoT Home Automation"],
+          internships: [],
+          experience: null,
+          resume_url: null,
+          certifications_urls: [],
+          ats_score: 45,
+          ats_analysis: {
+            overallScore: 45,
+            strengths: ["Basic sections present"],
+            weaknesses: ["Limited keywords", "Poor formatting", "Missing key sections"]
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: `sample-${Date.now()}-4`,
+          name: "Sarah Williams",
+          cgpa: 8.9,
+          branch: "Computer Science Engineering",
+          profile_completed: true,
+          technologies: ["Python", "Machine Learning", "TensorFlow", "Data Science", "Pandas", "NumPy"],
+          projects: ["Prediction Model", "Data Analysis Dashboard", "ML Classifier", "Deep Learning Project"],
+          internships: ["Data Science Intern at IBM", "AI Research Intern"],
+          experience: "Research assistant for 2 years with machine learning focus",
+          resume_url: null,
+          certifications_urls: [],
+          ats_score: 91,
+          ats_analysis: {
+            overallScore: 91,
+            strengths: ["Excellent technical keywords", "Perfect structure", "Industry-relevant content"],
+            weaknesses: ["Could enhance soft skills section"]
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: `sample-${Date.now()}-5`,
+          name: "Mike Brown",
+          cgpa: 7.2,
+          branch: "Information Technology",
+          profile_completed: true,
+          technologies: ["JavaScript", "React", "CSS", "HTML"],
+          projects: ["Portfolio Website", "Simple Calculator"],
+          internships: ["Local Company Intern"],
+          experience: "6 months internship in web development",
+          resume_url: null,
+          certifications_urls: [],
+          ats_score: 67,
+          ats_analysis: {
+            overallScore: 67,
+            strengths: ["Good basic structure", "Relevant skills listed"],
+            weaknesses: ["Limited technical depth", "Could improve keyword usage"]
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+
+      console.log('📝 Sample students prepared:', sampleStudents.length);
+      console.log('📊 Sample student structure:', Object.keys(sampleStudents[0]));
+
+      // Try to insert students one by one to identify specific issues
+      let successCount = 0;
+      let errors = [];
+
+      for (let i = 0; i < sampleStudents.length; i++) {
+        const student = sampleStudents[i];
+        console.log(`📝 Adding student ${i + 1}: ${student.name}...`);
+        
+        const { data, error } = await supabase
+          .from('student_details')
+          .insert([student])
+          .select();
+
+        if (error) {
+          console.error(`❌ Error adding student ${student.name}:`, error);
+          errors.push(`${student.name}: ${error.message}`);
+        } else {
+          console.log(`✅ Successfully added student ${student.name}:`, data);
+          successCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        alert(`Successfully added ${successCount} out of ${sampleStudents.length} students!`);
+        fetchStudentData(); // Refresh the data
+      }
+      
+      if (errors.length > 0) {
+        console.error('❌ Errors occurred:', errors);
+        alert('Some errors occurred:\n' + errors.join('\n'));
+      }
+      
+    } catch (error) {
+      console.error('❌ Critical error in addSampleStudents:', error);
+      alert('Critical error adding sample students: ' + (error as Error).message);
+    }
+  };
 
   // Filter students based on search term
   useEffect(() => {
@@ -88,58 +281,107 @@ const AdminDashboard = () => {
       setLoading(true);
       console.log('🔍 Fetching all registered students...');
       
-      // Try multiple approaches to get student count
-      let allStudents: StudentData[] = [];
-      
-      // Method 1: Get from student_details table
-      const { data: studentDetails, error: detailsError } = await supabase
+      // Method 1: Get students from student_details table
+      const { data: studentDetails, error: detailsError, count } = await supabase
         .from('student_details')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' });
 
-      if (studentDetails && !detailsError) {
+      console.log('📊 Student Details Query Result:', {
+        data: studentDetails,
+        error: detailsError,
+        count: count,
+        dataLength: studentDetails?.length || 0
+      });
+
+      let allStudents: StudentData[] = [];
+
+      if (!detailsError && studentDetails) {
         allStudents = studentDetails;
-        console.log(`📊 Found ${studentDetails.length} students with profile details`);
-      }
-
-      // Method 2: Create a more comprehensive approach 
-      // Since we might not have access to auth.users, let's use a different strategy
-
-      // Method 3: If still no data, try a simple count query
-      if (allStudents.length === 0) {
-        const { count, error: countError } = await supabase
-          .from('student_details')
-          .select('*', { count: 'exact', head: true });
-          
-        console.log(`� Count query result: ${count} students`);
-        
-        if (count && count > 0) {
-          // Create placeholder entries for the count
-          const placeholderStudents: StudentData[] = Array.from({ length: count }, (_, index) => ({
-            id: `placeholder-${index}`,
-            name: `Student ${index + 1}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            branch: 'Not Specified',
-            cgpa: null,
-            profile_completed: false,
-            technologies: [],
-            projects: [],
-            internships: [],
-            experience: '',
-            resume_url: '',
-            certifications_urls: []
-          }));
-          
-          allStudents = placeholderStudents;
+        console.log(`✅ Found ${allStudents.length} students in student_details table`);
+      } else {
+        console.log('⚠️ No data in student_details table or error occurred');
+        if (detailsError) {
+          console.error('Error details:', detailsError);
         }
       }
+
+      // Method 2: Always check profiles table to get all registered users (even if student_details has data)
+      console.log('🔍 Checking profiles table for all registered users...');
       
-      console.log(`✅ Total students to display: ${allStudents.length}`);
+      const { data: profiles, error: profilesError, count: profilesCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact' });
+
+      console.log('👥 Profiles Query Result:', {
+        data: profiles,
+        error: profilesError,
+        count: profilesCount,
+        dataLength: profiles?.length || 0
+      });
+
+      if (!profilesError && profiles && profiles.length > 0) {
+        // Create a map of existing student_details by ID for quick lookup
+        const studentDetailsMap = new Map(allStudents.map(s => [s.id, s]));
+        
+        // Add any users from profiles who don't have student_details yet
+        profiles.forEach((profile: any) => {
+          if (!studentDetailsMap.has(profile.id)) {
+            allStudents.push({
+              id: profile.id,
+              name: profile.full_name || profile.email || 'New Student',
+              created_at: profile.created_at || null,
+              updated_at: profile.updated_at || null,
+              cgpa: null,
+              branch: null,
+              profile_completed: false,
+              technologies: [],
+              projects: [],
+              internships: [],
+              experience: null,
+              resume_url: null,
+              certifications_urls: [],
+              ats_score: null,
+              ats_analysis: null
+            });
+          }
+        });
+        
+        console.log(`📊 Total students after merging profiles: ${allStudents.length}`);
+        console.log(`📊 Students with completed profiles: ${allStudents.filter(s => s.profile_completed).length}`);
+        console.log(`📊 Students with only basic registration: ${allStudents.filter(s => !s.profile_completed).length}`);
+      }
+
+      // Method 3: If still no data, show debug information
+      if (allStudents.length === 0) {
+        console.log('⚠️ No students found in either table');
+        
+        // Test database connectivity
+        const { data: testData, error: testError } = await supabase
+          .from('student_details')
+          .select('count(*)', { head: true, count: 'exact' });
+        
+        console.log('🔧 Database connectivity test:', {
+          accessible: !testError,
+          error: testError,
+          count: testData
+        });
+      } else {
+        // Log sample data for debugging
+        console.log('📊 Student data summary:', {
+          total: allStudents.length,
+          completed_profiles: allStudents.filter(s => s.profile_completed).length,
+          branches: [...new Set(allStudents.map(s => s.branch).filter(Boolean))],
+          names: allStudents.slice(0, 3).map(s => s.name),
+          sample_student_structure: Object.keys(allStudents[0] || {})
+        });
+      }
+      
+      console.log(`✅ Setting ${allStudents.length} students in state`);
       setStudents(allStudents);
       
     } catch (error) {
-      console.error('❌ Error fetching student data:', error);
+      console.error('❌ Critical error fetching student data:', error);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -147,24 +389,20 @@ const AdminDashboard = () => {
 
   const fetchTotalRegisteredCount = async () => {
     try {
-      // Method 1: Check if there's a profiles table or users table
-      const { count: profilesCount } = await supabase
+      // Get total count from profiles table (all registered users)
+      const { count: profilesCount, error: profilesError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      if (profilesCount && profilesCount > 0) {
-        console.log(`📊 Found ${profilesCount} registered users in profiles table`);
-        setTotalRegisteredCount(profilesCount);
+      if (profilesError) {
+        console.error('❌ Error fetching profiles count:', profilesError);
+        setTotalRegisteredCount(0);
         return;
       }
-
-      // Method 2: Use student_details count as fallback
-      const { count: studentsCount } = await supabase
-        .from('student_details')
-        .select('*', { count: 'exact', head: true });
       
-      console.log(`📊 Found ${studentsCount || 0} students in student_details table`);
-      setTotalRegisteredCount(studentsCount || 0);
+      const totalCount = profilesCount || 0;
+      console.log(`📊 Found ${totalCount} total registered users in profiles table`);
+      setTotalRegisteredCount(totalCount);
 
     } catch (error) {
       console.error('❌ Error fetching total count:', error);
@@ -240,12 +478,13 @@ const AdminDashboard = () => {
 
   // Calculate statistics from real student data
   const getStatistics = () => {
-    const totalStudents = Math.max(totalRegisteredCount, students.length); // Use the higher count
+    const totalStudents = Math.max(students.length, totalRegisteredCount); // Use the higher of the two counts
     const completedProfiles = students.filter(s => s.profile_completed).length;
-    const placedStudents = students.filter(s => s.placement_status === 'placed').length;
-    const placementRate = totalStudents > 0 ? (placedStudents / totalStudents * 100).toFixed(1) : "0";
+    const registeredOnly = students.filter(s => !s.profile_completed).length; // Students who only registered
+    const activeStudents = students.filter(s => s.name && s.cgpa).length; // Students with detailed info
+    const profileCompletionRate = totalStudents > 0 ? (completedProfiles / totalStudents * 100).toFixed(1) : "0";
     
-    return { totalStudents, completedProfiles, placedStudents, placementRate };
+    return { totalStudents, completedProfiles, activeStudents, registeredOnly, profileCompletionRate };
   };
 
   // Generate branch-wise data for charts
@@ -269,7 +508,7 @@ const AdminDashboard = () => {
   const exportPlacementStats = async () => {
     try {
       const pdf = new jsPDF();
-      const { totalStudents, placedStudents, placementRate } = getStatistics();
+      const { totalStudents, completedProfiles, activeStudents, profileCompletionRate } = getStatistics();
       const branchData = getBranchWiseData();
 
       // Title
@@ -285,8 +524,9 @@ const AdminDashboard = () => {
       pdf.text('Overall Statistics', 20, 80);
       pdf.setFontSize(12);
       pdf.text(`Total Students: ${totalStudents}`, 30, 100);
-      pdf.text(`Students Placed: ${placedStudents}`, 30, 115);
-      pdf.text(`Placement Rate: ${placementRate}%`, 30, 130);
+      pdf.text(`Completed Profiles: ${completedProfiles}`, 30, 115);
+      pdf.text(`Profile Completion Rate: ${profileCompletionRate}%`, 30, 130);
+      pdf.text(`Active Students: ${activeStudents}`, 30, 145);
 
       // Branch-wise data
       pdf.setFontSize(16);
@@ -362,12 +602,73 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-3">
               <Button 
+                onClick={() => {
+                  fetchStudentData();
+                  fetchTotalRegisteredCount();
+                }}
+                variant="outline" 
+                className="border-2 border-green-400 text-green-600 hover:bg-green-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
+              <Button 
                 onClick={exportPlacementStats}
                 variant="outline" 
                 className="border-2 border-blue-400 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export Reports
+              </Button>
+              <Button 
+                onClick={addSampleStudents}
+                variant="outline" 
+                className="border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Add Test Data
+              </Button>
+              <Button 
+                onClick={async () => {
+                  try {
+                    console.log('🔧 Quick database test...');
+                    const { data, error } = await supabase
+                      .from('student_details')
+                      .insert([{
+                        id: `test-${Date.now()}`,
+                        name: "Test Student",
+                        cgpa: 8.0,
+                        branch: "Test Branch",
+                        profile_completed: true,
+                        technologies: ["JavaScript"],
+                        projects: ["Test Project"],
+                        internships: ["Test Internship"],
+                        experience: "Test Experience",
+                        resume_url: null,
+                        certifications_urls: [],
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      }])
+                      .select();
+                    
+                    if (error) {
+                      console.error('❌ Quick test failed:', error);
+                      alert('Quick test failed: ' + error.message);
+                    } else {
+                      console.log('✅ Quick test passed:', data);
+                      alert('Quick test passed! Student added successfully.');
+                      fetchStudentData();
+                    }
+                  } catch (err) {
+                    console.error('❌ Quick test error:', err);
+                    alert('Quick test error: ' + (err as Error).message);
+                  }
+                }}
+                variant="outline"
+                className="border-2 border-orange-400 text-orange-600 hover:bg-orange-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Quick Test
               </Button>
               <Button
                 onClick={handleLogout}
@@ -380,20 +681,20 @@ const AdminDashboard = () => {
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(() => {
-              const { totalStudents, placementRate } = getStatistics();
+              const { totalStudents, completedProfiles, registeredOnly, profileCompletionRate } = getStatistics();
               return [
                 {
-                  title: "Total Students",
+                  title: "Total Registered",
                   value: totalStudents.toString(),
-                  subtitle: `${students.filter(s => s.profile_completed).length} profiles completed`,
+                  subtitle: `${completedProfiles} completed, ${registeredOnly} basic only`,
                   icon: Users,
                   gradient: "from-blue-400 to-blue-600",
                   bgGradient: "from-gray-800 to-black"
                 },
                 {
-                  title: "Placement Rate",
-                  value: `${placementRate}%`,
-                  subtitle: `${students.filter(s => s.placement_status === 'placed').length} students placed`,
+                  title: "Profile Completion",
+                  value: `${profileCompletionRate}%`,
+                  subtitle: `${completedProfiles} out of ${totalStudents} students`,
                   icon: TrendingUp,
                   gradient: "from-green-400 to-green-600",
                   bgGradient: "from-gray-800 to-black"
@@ -472,9 +773,9 @@ const AdminDashboard = () => {
                       {filteredStudents.map((student) => {
                         const getStatus = (student: StudentData) => {
                           if (!student.profile_completed) return { text: "Incomplete", color: "bg-gradient-to-r from-orange-400 to-red-400" };
-                          if (student.placement_status === 'placed') return { text: "Placed", color: "bg-gradient-to-r from-green-400 to-blue-400" };
-                          if ((student.cgpa || 0) >= 8.5) return { text: "Excellent", color: "bg-gradient-to-r from-blue-400 to-purple-400" };
+                          if ((student.cgpa || 0) >= 8.5) return { text: "Excellent", color: "bg-gradient-to-r from-green-400 to-blue-400" };
                           if ((student.cgpa || 0) >= 7.0) return { text: "Good", color: "bg-gradient-to-r from-blue-400 to-purple-400" };
+                          if ((student.cgpa || 0) >= 6.0) return { text: "Average", color: "bg-gradient-to-r from-yellow-400 to-orange-400" };
                           return { text: "Needs Improvement", color: "bg-gradient-to-r from-orange-400 to-red-400" };
                         };
                         
@@ -503,12 +804,37 @@ const AdminDashboard = () => {
                                 <p className="text-sm font-medium text-gray-600">Projects</p>
                                 <p className="text-lg font-bold text-gray-800">{student.projects?.length || 0}</p>
                               </div>
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-600">Skills</p>
+                                <p className="text-lg font-bold text-purple-600">{student.technologies?.length || 0}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-600">Internships</p>
+                                <p className="text-lg font-bold text-green-600">{student.internships?.length || 0}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-600">ATS Score</p>
+                                <p className={`text-lg font-bold ${
+                                  student.ats_score 
+                                    ? student.ats_score >= 85 ? 'text-green-600' 
+                                      : student.ats_score >= 70 ? 'text-blue-600'
+                                      : student.ats_score >= 50 ? 'text-yellow-600'
+                                      : 'text-red-600'
+                                    : 'text-gray-400'
+                                }`}>
+                                  {student.ats_score ? `${student.ats_score}%` : 'N/A'}
+                                </p>
+                              </div>
                               <Badge className={`px-3 py-1 font-semibold text-white ${status.color}`}>
                                 {status.text}
                               </Badge>
                               <Button 
                                 variant="outline" 
                                 size="sm"
+                                onClick={() => {
+                                  setSelectedStudent(student);
+                                  setShowStudentDetails(true);
+                                }}
                                 className="border-2 border-blue-300 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transform transition-all duration-300 hover:scale-105"
                               >
                                 View Details
@@ -684,12 +1010,12 @@ const AdminDashboard = () => {
                       <h3 className="text-lg font-semibold text-gray-800">Overall Statistics</h3>
                       <div className="space-y-3">
                         {(() => {
-                          const { totalStudents, placedStudents, placementRate } = getStatistics();
+                          const { totalStudents, completedProfiles, activeStudents, profileCompletionRate } = getStatistics();
                           return [
                             { label: "Total Students Registered", value: totalStudents },
-                            { label: "Students Placed", value: placedStudents },
-                            { label: "Placement Rate", value: `${placementRate}%` },
-                            { label: "Profiles Completed", value: students.filter(s => s.profile_completed).length }
+                            { label: "Profiles Completed", value: completedProfiles },
+                            { label: "Profile Completion Rate", value: `${profileCompletionRate}%` },
+                            { label: "Active Students", value: activeStudents }
                           ];
                         })().map((stat, index) => (
                           <div key={index} className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
@@ -802,6 +1128,291 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Student Details Dialog */}
+      <Dialog open={showStudentDetails} onOpenChange={setShowStudentDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl bg-gradient-to-r from-blue-700 to-purple-600 bg-clip-text text-transparent">
+              Student Profile Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <Card className="border-2 border-blue-100">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+                  <CardTitle className="text-lg text-gray-800">Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Full Name</Label>
+                      <p className="text-lg font-medium text-gray-800">{selectedStudent.name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Student ID</Label>
+                      <p className="text-lg font-medium text-gray-800">{selectedStudent.id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Branch</Label>
+                      <p className="text-lg font-medium text-gray-800">{selectedStudent.branch || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">CGPA</Label>
+                      <p className="text-lg font-medium text-gray-800">
+                        {selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'Not provided'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Profile Status</Label>
+                      <Badge className={selectedStudent.profile_completed ? 'bg-green-500' : 'bg-orange-500'}>
+                        {selectedStudent.profile_completed ? 'Complete' : 'Incomplete'}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Academic Performance</Label>
+                      <Badge className={
+                        (selectedStudent.cgpa || 0) >= 8.5 ? 'bg-green-500' :
+                        (selectedStudent.cgpa || 0) >= 7.0 ? 'bg-blue-500' :
+                        (selectedStudent.cgpa || 0) >= 6.0 ? 'bg-yellow-500' : 'bg-orange-500'
+                      }>
+                        {(selectedStudent.cgpa || 0) >= 8.5 ? 'Excellent' :
+                         (selectedStudent.cgpa || 0) >= 7.0 ? 'Good' :
+                         (selectedStudent.cgpa || 0) >= 6.0 ? 'Average' : 'Needs Improvement'}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Technical Skills */}
+              <Card className="border-2 border-green-100">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
+                  <CardTitle className="text-lg text-gray-800">Technical Skills</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.technologies && selectedStudent.technologies.length > 0 ? (
+                      selectedStudent.technologies.map((tech, index) => (
+                        <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700">
+                          {tech}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 italic">No technologies listed</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Projects */}
+              <Card className="border-2 border-purple-100">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <CardTitle className="text-lg text-gray-800">Projects</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {selectedStudent.projects && selectedStudent.projects.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedStudent.projects.map((project, index) => (
+                        <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                          <p className="font-medium text-gray-800">{project}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No projects listed</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Experience & Internships */}
+              <Card className="border-2 border-orange-100">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-yellow-50">
+                  <CardTitle className="text-lg text-gray-800">Experience & Internships</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Work Experience</Label>
+                      <p className="text-gray-800 mt-1">
+                        {selectedStudent.experience || 'No work experience provided'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Internships</Label>
+                      {selectedStudent.internships && selectedStudent.internships.length > 0 ? (
+                        <div className="space-y-2 mt-1">
+                          {selectedStudent.internships.map((internship, index) => (
+                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                              <p className="font-medium text-gray-800">{internship}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic mt-1">No internships listed</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Documents */}
+              <Card className="border-2 border-gray-100">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
+                  <CardTitle className="text-lg text-gray-800">Documents</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Resume</Label>
+                      <p className="text-gray-800">
+                        {selectedStudent.resume_url ? (
+                          <a 
+                            href={selectedStudent.resume_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            View Resume
+                          </a>
+                        ) : (
+                          <span className="text-gray-500 italic">No resume uploaded</span>
+                        )}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Certifications</Label>
+                      {selectedStudent.certifications_urls && selectedStudent.certifications_urls.length > 0 ? (
+                        <div className="space-y-1 mt-1">
+                          {selectedStudent.certifications_urls.map((cert, index) => (
+                            <a 
+                              key={index} 
+                              href={cert} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="block text-blue-600 hover:underline"
+                            >
+                              Certificate {index + 1}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic mt-1">No certifications uploaded</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ATS Resume Analysis */}
+              <Card className="border-2 border-cyan-100">
+                <CardHeader className="bg-gradient-to-r from-cyan-50 to-teal-50">
+                  <CardTitle className="text-lg text-gray-800">ATS Resume Analysis</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">ATS Compatibility Score</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-2xl font-bold ${
+                          selectedStudent.ats_score 
+                            ? selectedStudent.ats_score >= 85 ? 'text-green-600' 
+                              : selectedStudent.ats_score >= 70 ? 'text-blue-600'
+                              : selectedStudent.ats_score >= 50 ? 'text-yellow-600'
+                              : 'text-red-600'
+                            : 'text-gray-400'
+                        }`}>
+                          {selectedStudent.ats_score ? `${selectedStudent.ats_score}%` : 'Not analyzed'}
+                        </span>
+                        {selectedStudent.ats_score && (
+                          <Badge className={
+                            selectedStudent.ats_score >= 85 ? 'bg-green-500' 
+                              : selectedStudent.ats_score >= 70 ? 'bg-blue-500'
+                              : selectedStudent.ats_score >= 50 ? 'bg-yellow-500'
+                              : 'bg-red-500'
+                          }>
+                            {selectedStudent.ats_score >= 85 ? 'Excellent' 
+                              : selectedStudent.ats_score >= 70 ? 'Good'
+                              : selectedStudent.ats_score >= 50 ? 'Decent'
+                              : 'Needs Improvement'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Impact on Placement</Label>
+                      <p className="text-gray-800 mt-1">
+                        {selectedStudent.ats_score 
+                          ? selectedStudent.ats_score >= 85 
+                            ? 'Excellent ATS score will significantly boost placement chances'
+                            : selectedStudent.ats_score >= 70 
+                            ? 'Good ATS score will improve placement chances'
+                            : selectedStudent.ats_score >= 50 
+                            ? 'Decent ATS score provides moderate help'
+                            : 'Poor ATS score may hurt placement chances - needs improvement'
+                          : 'No ATS analysis available - recommend analyzing resume for better placement prediction'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  {selectedStudent.ats_analysis && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <Label className="text-sm font-semibold text-gray-600">Key Strengths</Label>
+                      <ul className="mt-1 text-sm text-gray-700">
+                        {selectedStudent.ats_analysis.strengths?.slice(0, 3).map((strength: string, index: number) => (
+                          <li key={index} className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                            {strength}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Registration Information */}
+              <Card className="border-2 border-indigo-100">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardTitle className="text-lg text-gray-800">Registration Information</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Registered On</Label>
+                      <p className="text-gray-800">
+                        {selectedStudent.created_at ? 
+                          new Date(selectedStudent.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }) : 'Not available'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-600">Last Updated</Label>
+                      <p className="text-gray-800">
+                        {selectedStudent.updated_at ? 
+                          new Date(selectedStudent.updated_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }) : 'Not available'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

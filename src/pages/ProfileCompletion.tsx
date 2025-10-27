@@ -19,13 +19,15 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const ProfileCompletion = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 5; // Back to original 5 steps
 
   // Form data
   const [formData, setFormData] = useState({
@@ -45,9 +47,98 @@ const ProfileCompletion = () => {
   const [internshipInput, setInternshipInput] = useState('');
   const [projectInput, setProjectInput] = useState('');
 
+  const testStorageConnection = async () => {
+    try {
+      console.log('Testing storage connection...');
+      const { data, error } = await supabase.storage.listBuckets();
+      console.log('Storage connection test result:', { data, error });
+      
+      if (error) {
+        toast({
+          title: "Storage Connection Issue",
+          description: `Storage error: ${error.message}. Please check your Supabase configuration.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Storage Connection OK",
+          description: `Found ${data?.length || 0} buckets: ${data?.map(b => b.name).join(', ') || 'none'}`,
+        });
+      }
+    } catch (error) {
+      console.error('Storage connection test failed:', error);
+      toast({
+        title: "Storage Test Failed",
+        description: "Unable to connect to storage. Please check your network and Supabase settings.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
+    ensureStorageBuckets();
     fetchUser();
   }, []);
+
+  const ensureStorageBuckets = async () => {
+    try {
+      console.log('Checking storage buckets...');
+      
+      // Check if resumes bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error('Error listing buckets:', listError);
+        console.log('Attempting to create bucket anyway...');
+      }
+
+      console.log('Available buckets:', buckets?.map(b => b.name));
+      
+      const resumesBucketExists = buckets?.some(bucket => bucket.name === 'resumes');
+      
+      if (!resumesBucketExists) {
+        console.log('Creating resumes bucket...');
+        
+        // Try creating with minimal configuration first
+        const { data: bucketData, error: createError } = await supabase.storage.createBucket('resumes', {
+          public: true
+        });
+        
+        if (createError) {
+          console.error('Error creating resumes bucket:', createError);
+          // Check if bucket already exists
+          if (createError.message?.includes('already exists') || createError.message?.includes('Duplicate')) {
+            console.log('Resumes bucket already exists');
+          } else {
+            console.warn('Bucket creation failed, upload may still work if bucket exists:', createError.message);
+            // Don't throw error, let the upload attempt proceed
+          }
+        } else {
+          console.log('Resumes bucket created successfully:', bucketData);
+        }
+      } else {
+        console.log('Resumes bucket already exists');
+      }
+      
+      // Also ensure certificates bucket exists for other functionality
+      const certificatesBucketExists = buckets?.some(bucket => bucket.name === 'certificates');
+      if (!certificatesBucketExists) {
+        console.log('Creating certificates bucket...');
+        const { error: certCreateError } = await supabase.storage.createBucket('certificates', {
+          public: true
+        });
+        
+        if (certCreateError && !certCreateError.message?.includes('already exists')) {
+          console.error('Error creating certificates bucket:', certCreateError);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error ensuring storage buckets:', error);
+      // Don't throw error here, let upload attempt proceed
+      console.log('Continuing with upload attempt despite bucket setup issues...');
+    }
+  };
 
   const fetchUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -126,23 +217,154 @@ const ProfileCompletion = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('File selected:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+
+    // Validate file type - check both MIME type and extension
+    if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a PDF file only.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: `File size: ${(file.size / 1024 / 1024).toFixed(2)}MB. Please upload a file smaller than 5MB.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file is not empty
+    if (file.size === 0) {
+      toast({
+        title: "Empty file",
+        description: "The selected file appears to be empty. Please choose a valid PDF file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const fileName = `${user.id}/resume.pdf`;
+      console.log('Starting upload process...');
+      
+      // Get current user first
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('User authenticated:', currentUser.id);
+      
+      // Ensure storage buckets exist
+      try {
+        await ensureStorageBuckets();
+      } catch (bucketError) {
+        console.warn('Bucket creation failed, but continuing with upload:', bucketError);
+        // Continue with upload attempt even if bucket creation fails
+      }
+
+      // Use actual file extension
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+      const fileName = `${currentUser.id}/resume_${Date.now()}.${fileExt}`;
+      
+      console.log('Generated filename:', fileName);
+      
+      // First, try to delete existing resume if any (cleanup old files)
+      try {
+        const { data: existingFiles } = await supabase.storage
+          .from('resumes')
+          .list(currentUser.id);
+        
+        if (existingFiles && existingFiles.length > 0) {
+          const oldFiles = existingFiles.map(f => `${currentUser.id}/${f.name}`);
+          await supabase.storage.from('resumes').remove(oldFiles);
+          console.log('Cleaned up old resume files');
+        }
+      } catch (deleteError) {
+        console.log('No existing files to delete or cleanup failed:', deleteError);
+      }
+      
+      // Upload the new resume
+      console.log('Uploading to storage...');
       const { data, error } = await supabase.storage
         .from('resumes')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, file, { 
+          cacheControl: '3600',
+          upsert: false 
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Upload error details:', {
+          message: error.message,
+          error: error,
+          fileName,
+          fileSize: file.size
+        });
+        throw error;
+      }
 
+      console.log('Upload successful:', data);
+
+      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('resumes')
         .getPublicUrl(data.path);
 
+      console.log('Generated public URL:', publicUrl);
+
+      // Verify URL is valid
+      if (!publicUrl || !publicUrl.includes(fileName.split('/')[1])) {
+        throw new Error('Failed to generate valid URL for uploaded file');
+      }
+
       setFormData(prev => ({ ...prev, resume: publicUrl }));
+      
+      toast({
+        title: "Resume uploaded successfully",
+        description: `${file.name} has been uploaded and is ready to use.`,
+      });
+
+      console.log('Upload process completed successfully');
+      
     } catch (error) {
       console.error('Error uploading resume:', error);
-      alert('Error uploading resume. Please try again.');
+      
+      let errorMessage = 'Failed to upload resume. Please try again.';
+      
+      if (error.message?.includes('not authenticated')) {
+        errorMessage = 'Please log in again to upload your resume.';
+      } else if (error.message?.includes('Bucket not found') || error.message?.includes('bucket')) {
+        errorMessage = 'Storage bucket not found. Please contact your administrator to set up the "resumes" storage bucket in Supabase.';
+      } else if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
+        errorMessage = 'Storage access denied. Please contact your administrator to configure storage policies for the "resumes" bucket.';
+      } else if (error.message?.includes('not allowed') || error.message?.includes('unauthorized')) {
+        errorMessage = 'File upload permission denied. Please log in again or contact support.';
+      } else if (error.message?.includes('size') || error.message?.includes('too large')) {
+        errorMessage = 'File size exceeds limit. Please use a PDF file smaller than 5MB.';
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message?.includes('duplicate') || error.message?.includes('exists')) {
+        errorMessage = 'File upload conflict. Please try again.';
+      } else if (error.message?.includes('Invalid') || error.message?.includes('mime')) {
+        errorMessage = 'Invalid file type. Please upload a valid PDF file only.';
+      }
+      
+      toast({
+        title: "Upload failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -192,6 +414,7 @@ const ProfileCompletion = () => {
         return formData.internships.length > 0 || formData.experience || formData.projects.length > 0;
       case 5:
         return formData.resume;
+
       default:
         return true;
     }
@@ -439,32 +662,62 @@ const ProfileCompletion = () => {
               <FileText className="h-16 w-16 mx-auto text-red-600 mb-4" />
               <h2 className="text-2xl font-bold text-black">Resume Upload</h2>
               <p className="text-black">Upload your resume (PDF format)</p>
+              
+              {/* Debug section - remove this in production */}
+              {/* <div className="bg-gray-50 p-3 rounded-lg mt-4 max-w-md mx-auto">
+                <p className="text-xs text-gray-500 mb-2">Troubleshooting Tools:</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={testStorageConnection}
+                  className="text-xs"
+                >
+                  Test Storage Connection
+                </Button>
+              </div> */}
             </div>
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="resume" className="text-black">Upload Resume (PDF)</Label>
-                <Input
-                  id="resume"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleResumeUpload}
-                  className="cursor-pointer"
-                />
+                <Label htmlFor="resume" className="text-black mb-2 block">Upload Resume (PDF only, max 5MB)</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <Input
+                    id="resume"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleResumeUpload}
+                    className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    disabled={loading}
+                  />
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a PDF file to upload your resume
+                  </p>
+                </div>
               </div>
               
-              {formData.resume && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              {loading && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-blue-800">Uploading resume...</span>
+                  </div>
+                </div>
+              )}
+              
+              {formData.resume && !loading && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
                     <FileText className="h-5 w-5 text-green-600" />
-                    <span className="text-green-800">Resume uploaded successfully!</span>
+                    <span className="text-green-800 font-medium">Resume uploaded successfully!</span>
                   </div>
                   <a 
                     href={formData.resume} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
+                    className="text-blue-600 hover:underline text-sm inline-flex items-center gap-1"
                   >
+                    <FileText className="h-4 w-4" />
                     View uploaded resume
                   </a>
                 </div>

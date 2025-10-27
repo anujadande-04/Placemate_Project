@@ -10,6 +10,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProfileCompletion from "./pages/ProfileCompletion";
 import EmailConfirmation from "./pages/EmailConfirmation";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +29,7 @@ const App = () => (
           <Route path="/complete-profile" element={<ProfileCompletion />} />
           <Route path="/dashboard/admin" element={<AdminDashboard />} />
           <Route path="/confirm-email" element={<EmailConfirmation />} />
-          <Route path="/auth/callback" element={<EmailConfirmation />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

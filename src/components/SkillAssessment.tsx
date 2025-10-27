@@ -50,11 +50,52 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
   const [currentQuestions, setCurrentQuestions] = useState<AssessmentQuestion[]>([]);
   const [startTime, setStartTime] = useState<Date | null>(null);
 
+  // Helper function to clear all assessment results
+  const clearAllResults = () => {
+    if (user?.id) {
+      localStorage.removeItem(`skillAssessment_${user.id}`);
+      const categories = skillAssessmentService.getSkillCategories();
+      setSkillCategories(categories);
+    }
+  };
+
   useEffect(() => {
     // Load skill categories from service
     const categories = skillAssessmentService.getSkillCategories();
-    setSkillCategories(categories);
-  }, []);
+    
+    // Load saved assessment results from localStorage
+    if (user?.id) {
+      const savedResults = localStorage.getItem(`skillAssessment_${user.id}`);
+      if (savedResults) {
+        try {
+          const results = JSON.parse(savedResults);
+          // Apply saved results to categories
+          const updatedCategories = categories.map(category => ({
+            ...category,
+            skills: category.skills.map(skill => {
+              const savedResult = results.find((r: any) => r.skillId === skill.id);
+              if (savedResult) {
+                return {
+                  ...skill,
+                  score: savedResult.score,
+                  completed: true
+                };
+              }
+              return skill;
+            })
+          }));
+          setSkillCategories(updatedCategories);
+        } catch (error) {
+          console.error('Error loading saved assessment results:', error);
+          setSkillCategories(categories);
+        }
+      } else {
+        setSkillCategories(categories);
+      }
+    } else {
+      setSkillCategories(categories);
+    }
+  }, [user?.id]);
 
   const getIconComponent = (iconName: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
@@ -116,7 +157,7 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
         currentAssessment.completed = true;
         
         const timeSpent = startTime ? (new Date().getTime() - startTime.getTime()) / 1000 : 0;
-        skillAssessmentService.storeAssessmentResult(user.id, {
+        const assessmentResult = {
           skillId: currentAssessment.id,
           score,
           totalQuestions: currentQuestions.length,
@@ -125,7 +166,42 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
           completedAt: new Date(),
           weakAreas: [],
           strengths: []
-        });
+        };
+        
+        // Store in memory (existing service)
+        skillAssessmentService.storeAssessmentResult(user.id, assessmentResult);
+        
+        // Store in localStorage for persistence
+        try {
+          const storageKey = `skillAssessment_${user.id}`;
+          const existingResults = localStorage.getItem(storageKey);
+          let results = [];
+          
+          if (existingResults) {
+            results = JSON.parse(existingResults);
+            // Remove any existing result for this skill
+            results = results.filter((r: any) => r.skillId !== currentAssessment.id);
+          }
+          
+          // Add the new result
+          results.push(assessmentResult);
+          localStorage.setItem(storageKey, JSON.stringify(results));
+          
+          // Update the skill categories state to reflect the new score
+          setSkillCategories(prevCategories => 
+            prevCategories.map(category => ({
+              ...category,
+              skills: category.skills.map(skill => 
+                skill.id === currentAssessment.id 
+                  ? { ...skill, score, completed: true }
+                  : skill
+              )
+            }))
+          );
+          
+        } catch (error) {
+          console.error('Error saving assessment result to localStorage:', error);
+        }
         
         // Trigger metrics update in parent component
         if (onMetricsUpdate) {

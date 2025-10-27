@@ -221,7 +221,7 @@ class PlacementMLTrainer:
             direction = "📈 Positive" if coef > 0 else "📉 Negative"
             print(f"{i+1:2d}. {feature:20s}: {coef:8.4f} ({direction})")
     
-    def export_model(self, output_path='src/services/trained_model.json'):
+    def export_model(self, output_path='public/trained_model.json'):
         """Export enhanced model parameters for JavaScript usage"""
         print(f"\n💾 Exporting enhanced model to {output_path}...")
         

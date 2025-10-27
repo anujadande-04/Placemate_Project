@@ -19,6 +19,34 @@ const Signup = () => {
 
   const navigate = useNavigate();
 
+  // Debug function to test Supabase connection
+  const testConnection = async () => {
+    try {
+      console.log("Testing Supabase connection...");
+      console.log("Supabase URL:", "https://yduiaxjgolkiaydilfux.supabase.co");
+      console.log("Current origin:", window.location.origin);
+      
+      // Test basic connection
+      const response = await fetch("https://yduiaxjgolkiaydilfux.supabase.co/rest/v1/", {
+        method: 'GET',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkdWlheGpnb2xraWF5ZGlsZnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwMzM4MjIsImV4cCI6MjA3MzYwOTgyMn0.Ws16Qu16E98shNmhR5_myYnd7mUWPbLnI64iJZLvu6o'
+        }
+      });
+      
+      console.log("Direct fetch response:", response.status, response.statusText);
+      
+      // Test Supabase auth
+      const { data, error } = await supabase.auth.getSession();
+      console.log("Supabase auth test result:", { data, error });
+      
+      alert(`Connection tests:\nDirect fetch: ${response.ok ? 'Success' : 'Failed'}\nSupabase auth: ${error ? 'Failed - ' + error.message : 'Success'}`);
+    } catch (err: any) {
+      console.error("Connection test error:", err);
+      alert(`Connection test failed: ${err.message}`);
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -45,22 +73,62 @@ const Signup = () => {
     }
 
     try {
+      console.log("Attempting signup with:", { email, userType, fullName });
+      
+      // Test Supabase connection first
+      const { data: testData, error: testError } = await supabase.auth.getSession();
+      console.log("Supabase connection test:", { testData, testError });
+
       // Sign up the user with email confirmation redirect
-      const { data, error } = await supabase.auth.signUp({
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log("Redirect URL:", redirectUrl);
+      
+      // Signup payload with email confirmation redirect
+      const signupPayload = {
         email: email,
         password: password,
         options: {
-          emailRedirectTo: `${window.location.origin}/confirm-email`,
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
             role: userType, // Set the role during signup
           }
         }
-      });
+      };
+      
+      console.log("Signup payload:", signupPayload);
+      
+      let data, error;
+      
+      try {
+        // First attempt with full payload
+        const result = await supabase.auth.signUp(signupPayload);
+        data = result.data;
+        error = result.error;
+      } catch (signupError: any) {
+        console.error("First signup attempt failed:", signupError);
+        
+        // Fallback to minimal signup
+        console.log("Trying minimal signup...");
+        try {
+          const result = await supabase.auth.signUp({
+            email: email,
+            password: password
+          });
+          data = result.data;
+          error = result.error;
+          console.log("Minimal signup result:", { data, error });
+        } catch (minimalError: any) {
+          console.error("Minimal signup also failed:", minimalError);
+          throw minimalError;
+        }
+      }
+
+      console.log("Signup response:", { data, error });
 
       if (error) {
         console.error("Signup failed:", error.message);
-        setErrorMessage(error.message);
+        setErrorMessage(`Signup failed: ${error.message}`);
         setIsLoading(false);
         return;
       }
@@ -91,8 +159,24 @@ const Signup = () => {
         }
       }
     } catch (err: any) {
-      console.error("Unexpected error:", err.message);
-      setErrorMessage("Something went wrong. Please try again.");
+      console.error("Unexpected error:", err);
+      console.error("Error details:", {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        code: err.code
+      });
+      
+      // Handle specific error types
+      if (err.message?.toLowerCase().includes('fetch') || err.name === 'TypeError') {
+        setErrorMessage("❌ Network error: Cannot connect to the authentication server. Please:\n• Check your internet connection\n• Try refreshing the page\n• Disable any VPN or firewall temporarily");
+      } else if (err.message?.toLowerCase().includes('cors')) {
+        setErrorMessage("❌ CORS error: Browser security settings are blocking the request. Try using a different browser or contact support.");
+      } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+        setErrorMessage("❌ Server unreachable: The authentication server is not responding. Please try again later.");
+      } else {
+        setErrorMessage(`❌ Error: ${err.message || 'Unknown error occurred'}. Please try again or contact support if the problem persists.`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -241,6 +325,18 @@ const Signup = () => {
                   </p>
                 </div>
               )}
+
+              {/* Debug Connection Test - Remove in production */}
+              {/* <div className="mt-4 text-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={testConnection}
+                  className="text-sm"
+                >
+                  🔧 Test Connection
+                </Button>
+              </div> */}
 
               {/* Login Link */}
               <div className="mt-8 text-center">

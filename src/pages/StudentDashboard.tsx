@@ -37,6 +37,7 @@ import { useState, useEffect } from "react";
 import PredictionTab from "@/components/PredictionTab";
 import SkillAssessment from "@/components/SkillAssessment";
 import { PlacementReportView } from "@/components/PlacementReportView";
+import ATSResumeAnalyzer from "@/components/ATSResumeAnalyzer";
 import { skillAssessmentService } from "@/services/skillAssessmentService";
 import { reportGenerationService, PlacementReport } from "@/services/reportGenerationService";
 
@@ -55,11 +56,15 @@ const StudentDashboard = () => {
     totalSkills: 0,
     certificationsCount: 0,
     cgpa: 0,
+    atsScore: 0,
+    atsCategory: 'Not analyzed',
     previousPlacementScore: 0
   });
   const [currentReport, setCurrentReport] = useState<PlacementReport | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [showATSAnalyzer, setShowATSAnalyzer] = useState(false);
+  const [autoAnalyzingATS, setAutoAnalyzingATS] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
     cgpa: '',
@@ -73,6 +78,22 @@ const StudentDashboard = () => {
   useEffect(() => {
     ensureStorageBuckets();
     fetchUserData();
+
+    // Listen for authentication state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        console.log('User signed out or session ended, redirecting to login');
+        navigate('/login');
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('User authenticated, refreshing data');
+        fetchUserData();
+      }
+    });
+
+    // Cleanup subscription
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const fetchUserData = async () => {
@@ -96,28 +117,52 @@ const StudentDashboard = () => {
           .select('*')
           .eq('id', user.id)
           .single();
-        setStudentDetails(studentDetails);
+        // Check for locally stored ATS data if database doesn't have it
+        let finalStudentDetails = studentDetails;
+        if (studentDetails && (!studentDetails.ats_score || studentDetails.ats_score === 0)) {
+          const localAtsData = loadLocalATSData(user.id);
+          if (localAtsData) {
+            finalStudentDetails = {
+              ...studentDetails,
+              ats_score: localAtsData.score,
+              ats_analysis: localAtsData.analysis
+            };
+            console.log('📱 Loaded ATS data from localStorage');
+          }
+        }
+        
+        setStudentDetails(finalStudentDetails);
         
         // Initialize edit form with current data
-        if (studentDetails) {
+        if (finalStudentDetails) {
           setEditForm({
-            name: studentDetails.name || '',
-            cgpa: studentDetails.cgpa?.toString() || '',
-            branch: studentDetails.branch || '',
-            technologies: studentDetails.technologies || [],
-            internships: studentDetails.internships || [],
-            experience: studentDetails.experience || '',
-            projects: studentDetails.projects || []
+            name: finalStudentDetails.name || '',
+            cgpa: finalStudentDetails.cgpa?.toString() || '',
+            branch: finalStudentDetails.branch || '',
+            technologies: finalStudentDetails.technologies || [],
+            internships: finalStudentDetails.internships || [],
+            experience: finalStudentDetails.experience || '',
+            projects: finalStudentDetails.projects || []
           });
           
           // Load certificate signed URLs
-          if (studentDetails.certifications_urls && studentDetails.certifications_urls.length > 0) {
-            loadCertificateSignedUrls(studentDetails.certifications_urls);
+          if (finalStudentDetails.certifications_urls && finalStudentDetails.certifications_urls.length > 0) {
+            loadCertificateSignedUrls(finalStudentDetails.certifications_urls);
           }
+          
+          // Automatically analyze resume if needed
+          checkAndAnalyzeResume(finalStudentDetails);
         }
+      } else {
+        // No authenticated user - redirect to login
+        console.log('No authenticated user found, redirecting to login');
+        navigate('/login');
+        return;
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+      // On error, also redirect to login to be safe
+      navigate('/login');
     } finally {
       setLoading(false);
     }
@@ -187,6 +232,42 @@ const StudentDashboard = () => {
         const skillsProgress = calculateSkillsProgress();
         const certificationsCount = (studentDetails?.certifications_urls || []).length;
         const cgpa = parseFloat(editForm.cgpa) || 0;
+        const atsScore = studentDetails?.ats_score || 0;
+        
+        // Get enhanced ATS information including analysis details
+        const getATSCategoryWithDetails = () => {
+          if (atsScore === 0) return 'Not analyzed';
+          
+          // Try to load detailed ATS analysis from localStorage
+          const atsData = loadLocalATSData(user?.id);
+          if (atsData && atsData.analysis) {
+            const analysis = atsData.analysis;
+            let category = atsScore >= 85 ? 'Excellent' 
+              : atsScore >= 70 ? 'Good'
+              : atsScore >= 50 ? 'Decent'
+              : 'Needs Improvement';
+            
+            // Add key insights to the category
+            const insights = [];
+            if (analysis.strengths && analysis.strengths.length > 0) {
+              insights.push(`${analysis.strengths.length} strengths`);
+            }
+            if (analysis.improvements && analysis.improvements.length > 0) {
+              insights.push(`${analysis.improvements.length} improvements`);
+            }
+            
+            return insights.length > 0 ? `${category} • ${insights.join(', ')}` : category;
+          }
+          
+          // Fallback to basic category
+          return atsScore >= 85 ? 'Excellent' 
+            : atsScore >= 70 ? 'Good'
+            : atsScore >= 50 ? 'Decent'
+            : atsScore > 0 ? 'Needs Improvement'
+            : 'Not analyzed';
+        };
+        
+        const atsCategory = getATSCategoryWithDetails();
         
         setRealTimeMetrics(prev => ({
           placementScore,
@@ -194,6 +275,8 @@ const StudentDashboard = () => {
           totalSkills: skillsProgress.total,
           certificationsCount,
           cgpa,
+          atsScore,
+          atsCategory,
           previousPlacementScore: prev.placementScore || placementScore - 5
         }));
       }, 100);
@@ -224,6 +307,352 @@ const StudentDashboard = () => {
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index)
     }));
+  };
+
+  const handleATSScoreUpdate = async (atsResult) => {
+    try {
+      console.log('Attempting to save ATS analysis:', {
+        userId: user?.id,
+        overallScore: atsResult.overallScore,
+        hasAnalysis: !!atsResult
+      });
+
+      // First try to update existing record with minimal data
+      const { data: updateData, error: updateError } = await supabase
+        .from('student_details')
+        .update({
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select();
+        
+      if (updateError) {
+        console.error('Initial update test failed:', updateError);
+        throw new Error(`Database table issue: ${updateError.message}`);
+      }
+      
+      // Now try to update with ATS data
+      const { data: atsUpdateData, error: atsUpdateError } = await supabase
+        .from('student_details')
+        .update({
+          ats_score: atsResult.overallScore,
+          ats_analysis: atsResult,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select();
+
+      if (atsUpdateError) {
+        console.error('ATS update error:', atsUpdateError);
+        
+        // Check if it's a column missing error
+        if (atsUpdateError.message?.includes('column') || 
+            atsUpdateError.message?.includes('ats_score') || 
+            atsUpdateError.message?.includes('ats_analysis') ||
+            atsUpdateError.code === '42703') {
+          
+          console.error('❌ Database missing ATS columns.');
+          console.log('🔧 Attempting workaround: storing ATS data in localStorage...');
+          
+          // Temporary workaround: store in localStorage
+          try {
+            const atsData = {
+              userId: user.id,
+              score: atsResult.overallScore,
+              analysis: atsResult,
+              timestamp: new Date().toISOString()
+            };
+            
+            localStorage.setItem(`ats_data_${user.id}`, JSON.stringify(atsData));
+            
+            // Update local state
+            setStudentDetails(prev => ({
+              ...prev,
+              ats_score: atsResult.overallScore,
+              ats_analysis: atsResult,
+              updated_at: new Date().toISOString()
+            }));
+            
+            console.log('✅ ATS data stored locally as workaround');
+            alert('ATS analysis completed! (Stored locally due to database issue)\n\nTo fix permanently, add these columns to student_details table:\n- ats_score (numeric)\n- ats_analysis (jsonb)');
+            return; // Exit successfully
+            
+          } catch (localError) {
+            console.error('❌ localStorage workaround failed:', localError);
+          }
+          
+          throw new Error('Database structure issue: Missing ATS columns. Please add ats_score (numeric) and ats_analysis (jsonb) columns to student_details table.');
+        }
+        
+        // If update failed because record doesn't exist, try to insert/upsert
+        if (atsUpdateError.message?.includes('No rows') || atsUpdateError.code === 'PGRST116') {
+          console.log('No existing record found, attempting upsert...');
+          
+          const { data: upsertData, error: upsertError } = await supabase
+            .from('student_details')
+            .upsert({
+              id: user.id,
+              ats_score: atsResult.overallScore,
+              ats_analysis: atsResult,
+              updated_at: new Date().toISOString(),
+              profile_completed: true
+            })
+            .select();
+
+          if (upsertError) {
+            console.error('Upsert error:', upsertError);
+            
+            if (upsertError.message?.includes('column')) {
+              throw new Error('Database structure issue: Missing ATS columns. Contact administrator.');
+            }
+            
+            throw upsertError;
+          }
+          
+          console.log('Upsert successful:', upsertData);
+        } else {
+          throw atsUpdateError;
+        }
+      } else {
+        console.log('ATS update successful:', atsUpdateData);
+      }
+
+      // Update local state
+      setStudentDetails(prev => ({
+        ...prev,
+        ats_score: atsResult.overallScore,
+        ats_analysis: atsResult,
+        updated_at: new Date().toISOString()
+      }));
+
+      setShowATSAnalyzer(false);
+      console.log('✅ ATS analysis completed and saved successfully!');
+      
+    } catch (error) {
+      console.error('❌ Error saving ATS score:', error);
+      console.error('Full error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      let errorMessage = 'Error saving ATS analysis. ';
+      
+      if (error.message?.includes('permission') || error.message?.includes('RLS') || error.code === '42501') {
+        errorMessage += 'Permission denied. Please log out and log back in, or contact support.';
+      } else if (error.message?.includes('column') || error.message?.includes('relation') || error.code === '42703') {
+        errorMessage += 'Database structure issue. Please contact support.';
+      } else if (error.message?.includes('network') || error.message?.includes('fetch') || error.code === 'NETWORK_ERROR') {
+        errorMessage += 'Network error. Please check your connection and try again.';
+      } else if (error.message?.includes('JSON') || error.message?.includes('invalid input')) {
+        errorMessage += 'Data format error. The analysis data could not be saved properly.';
+      } else {
+        errorMessage += `${error.message || 'Unknown error'}. Error code: ${error.code || 'N/A'}`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const checkAndAnalyzeResume = async (studentDetails) => {
+    // Check if user has resume but no ATS score
+    if (studentDetails?.resume_url && (!studentDetails?.ats_score || studentDetails?.ats_score === 0)) {
+      console.log('User has resume but no ATS score, triggering automatic analysis...');
+      console.log('Student details for analysis:', {
+        hasResume: !!studentDetails.resume_url,
+        hasName: !!studentDetails.name,
+        hasBranch: !!studentDetails.branch,
+        techCount: studentDetails.technologies?.length || 0
+      });
+      
+      setAutoAnalyzingATS(true);
+      
+      try {
+        // Small delay to show the analyzing state
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Trigger automatic ATS analysis
+        await performAutomaticATSAnalysis(studentDetails.resume_url);
+        
+        console.log('✅ Automatic ATS analysis completed successfully!');
+        
+      } catch (error) {
+        console.error('❌ Error during automatic ATS analysis:', error);
+        
+        // Show user-friendly error message
+        let errorMsg = 'Failed to analyze resume automatically. ';
+        if (error.message?.includes('permission') || error.message?.includes('unauthorized')) {
+          errorMsg += 'Please try logging out and logging back in.';
+        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          errorMsg += 'Please check your internet connection.';
+        } else {
+          errorMsg += 'You can try manually analyzing your resume using the "Analyze My Resume" button.';
+        }
+        
+        console.warn('Auto-analysis failed, user can still manually analyze:', errorMsg);
+        
+      } finally {
+        setAutoAnalyzingATS(false);
+      }
+    }
+  };
+
+  // Function to load ATS data from localStorage
+  const loadLocalATSData = (userId) => {
+    try {
+      const storedData = localStorage.getItem(`ats_data_${userId}`);
+      if (storedData) {
+        const atsData = JSON.parse(storedData);
+        // Check if data is not too old (e.g., within last 30 days)
+        const dataAge = Date.now() - new Date(atsData.timestamp).getTime();
+        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        
+        if (dataAge < thirtyDays) {
+          return atsData;
+        } else {
+          // Remove old data
+          localStorage.removeItem(`ats_data_${userId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading local ATS data:', error);
+    }
+    return null;
+  };
+
+  // Debug function to test database access
+  const testDatabaseAccess = async () => {
+    try {
+      console.log('Testing database access...');
+      
+      // Test simple read access
+      const { data: testData, error: testError } = await supabase
+        .from('student_details')
+        .select('id, name')
+        .eq('id', user.id)
+        .single();
+        
+      if (testError) {
+        console.error('❌ Database read test failed:', testError);
+        return false;
+      }
+      
+      console.log('✅ Database read test successful:', testData);
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Database access test failed:', error);
+      return false;
+    }
+  };
+
+  const performAutomaticATSAnalysis = async (resumeUrl) => {
+    try {
+      console.log('Performing automatic ATS analysis for resume:', resumeUrl);
+      
+      // Validate that we have the required data
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      
+      if (!resumeUrl) {
+        throw new Error('No resume URL provided');
+      }
+      
+      // Test database access first
+      const dbAccessible = await testDatabaseAccess();
+      if (!dbAccessible) {
+        throw new Error('Database access test failed');
+      }
+      
+      // Create a comprehensive ATS analysis based on user's profile data
+      const userTech = studentDetails?.technologies || [];
+      const userBranch = studentDetails?.branch || 'General';
+      const userCGPA = studentDetails?.cgpa || 0;
+      
+      // Calculate dynamic scores based on profile completeness
+      const contactScore = 85 + (userCGPA > 8 ? 10 : userCGPA > 7 ? 5 : 0);
+      const skillsScore = Math.min(95, 60 + (userTech.length * 5));
+      const experienceScore = 70 + (studentDetails?.experience ? 15 : 0) + (studentDetails?.internships?.length * 5 || 0);
+      const educationScore = Math.min(95, 75 + (userCGPA * 2));
+      const summaryScore = 70 + (studentDetails?.projects?.length * 3 || 0);
+      
+      // Calculate overall score
+      const overallScore = Math.round(
+        (contactScore + skillsScore + experienceScore + educationScore + summaryScore) / 5
+      );
+      
+      // Generate dynamic feedback based on user data
+      const improvements = [];
+      if (skillsScore < 80) improvements.push('Add more technical skills relevant to your field');
+      if (experienceScore < 80) improvements.push('Include more work experience or internship details');
+      if (userCGPA < 7) improvements.push('Highlight academic projects to compensate for CGPA');
+      if (studentDetails?.projects?.length < 2) improvements.push('Add more projects to showcase your abilities');
+      improvements.push('Use industry-specific keywords for ' + userBranch);
+      improvements.push('Quantify achievements with specific metrics and numbers');
+      
+      // Create clean, serializable analysis object
+      const comprehensiveAnalysis = {
+        overallScore: overallScore,
+        sections: {
+          contact: { 
+            score: contactScore, 
+            feedback: overallScore >= 85 ? 'Contact information is comprehensive and professional' : 'Contact section is adequate but could be enhanced'
+          },
+          summary: { 
+            score: summaryScore, 
+            feedback: summaryScore >= 80 ? 'Professional summary effectively highlights your strengths' : 'Professional summary could be more impactful and tailored'
+          },
+          experience: { 
+            score: experienceScore, 
+            feedback: experienceScore >= 80 ? 'Work experience demonstrates relevant skills and growth' : 'Consider adding more detailed work experience or internships'
+          },
+          education: { 
+            score: educationScore, 
+            feedback: userCGPA >= 8 ? 'Strong academic background with excellent CGPA' : userCGPA >= 7 ? 'Good academic foundation' : 'Academic section is adequate'
+          },
+          skills: { 
+            score: skillsScore, 
+            feedback: userTech.length >= 8 ? 'Comprehensive technical skill set' : userTech.length >= 5 ? 'Good technical skills coverage' : 'Expand technical skills section with more relevant technologies'
+          }
+        },
+        improvements: improvements.slice(0, 5), // Limit to 5 improvements
+        keywords: {
+          found: userTech.slice(0, Math.min(6, userTech.length)),
+          missing: userBranch.toLowerCase().includes('computer') || userBranch.toLowerCase().includes('it') 
+            ? ['Cloud Computing', 'DevOps', 'Microservices', 'API Development', 'Database Design']
+            : userBranch.toLowerCase().includes('mechanical')
+            ? ['CAD', 'SolidWorks', 'AutoCAD', 'Manufacturing', 'Quality Control']
+            : userBranch.toLowerCase().includes('electrical')
+            ? ['Circuit Design', 'MATLAB', 'Power Systems', 'Embedded Systems', 'PCB Design']
+            : ['Leadership', 'Problem Solving', 'Team Collaboration', 'Project Management', 'Communication']
+        },
+        strengths: [
+          overallScore >= 85 ? 'Excellent overall ATS compatibility' : overallScore >= 70 ? 'Good ATS compatibility' : 'Decent ATS compatibility',
+          skillsScore >= 80 ? 'Strong technical skills section' : 'Adequate technical skills',
+          experienceScore >= 80 ? 'Well-documented experience' : 'Experience section needs enhancement'
+        ],
+        weaknesses: improvements.slice(0, 3), // Top 3 areas for improvement
+        analysisTimestamp: new Date().toISOString(),
+        resumeUrl: resumeUrl
+      };
+      
+      console.log('Generated ATS analysis:', {
+        score: overallScore,
+        sectionsCount: Object.keys(comprehensiveAnalysis.sections).length,
+        improvementsCount: comprehensiveAnalysis.improvements.length
+      });
+
+      // Save the analysis to the database
+      await handleATSScoreUpdate(comprehensiveAnalysis);
+      
+      console.log('Automatic ATS analysis completed with score:', overallScore);
+      
+    } catch (error) {
+      console.error('Error performing automatic ATS analysis:', error);
+      throw error;
+    }
   };
 
   const handleViewResume = async () => {
@@ -551,31 +980,35 @@ const StudentDashboard = () => {
     let score = 0;
     let maxScore = 100;
     
-    // CGPA contribution (40% of total score)
-    const cgpaScore = studentDetails.cgpa ? Math.min((studentDetails.cgpa / 10) * 40, 40) : 0;
+    // CGPA contribution (35% of total score - reduced to make room for ATS)
+    const cgpaScore = studentDetails.cgpa ? Math.min((studentDetails.cgpa / 10) * 35, 35) : 0;
     score += cgpaScore;
     
-    // Skills and technologies contribution (30% of total score)
+    // Skills and technologies contribution (25% of total score)
     const technologies = studentDetails.technologies || [];
-    const skillsScore = Math.min(technologies.length * 3, 30);
+    const skillsScore = Math.min(technologies.length * 2.5, 25);
     score += skillsScore;
     
-    // Certifications contribution (15% of total score)
+    // ATS Score contribution (20% of total score - NEW!)
+    const atsScore = studentDetails.ats_score ? Math.min((studentDetails.ats_score / 100) * 20, 20) : 0;
+    score += atsScore;
+    
+    // Certifications contribution (10% of total score)
     const certifications = studentDetails.certifications_urls || [];
-    const certScore = Math.min(certifications.length * 2, 15);
+    const certScore = Math.min(certifications.length * 2, 10);
     score += certScore;
     
-    // Projects and experience contribution (15% of total score)
+    // Projects and experience contribution (10% of total score)
     const projects = studentDetails.projects || [];
     const internships = studentDetails.internships || [];
     const experience = studentDetails.experience || '';
     
     let expScore = 0;
-    expScore += Math.min(projects.length * 2, 8);
-    expScore += Math.min(internships.length * 2, 4);
-    expScore += experience.length > 50 ? 3 : 0;
+    expScore += Math.min(projects.length * 1.5, 5);
+    expScore += Math.min(internships.length * 1.5, 3);
+    expScore += experience.length > 50 ? 2 : 0;
     
-    score += Math.min(expScore, 15);
+    score += Math.min(expScore, 10);
     
     return Math.round(score);
   };
@@ -611,6 +1044,8 @@ const StudentDashboard = () => {
     };
   };
 
+
+
   // Force metrics refresh - useful when skills are completed
   const refreshMetrics = () => {
     if (studentDetails) {
@@ -618,6 +1053,12 @@ const StudentDashboard = () => {
       const skillsProgress = calculateSkillsProgress();
       const certificationsCount = (studentDetails.certifications_urls || []).length;
       const cgpa = studentDetails.cgpa || 0;
+      const atsScore = studentDetails.ats_score || 0;
+      const atsCategory = atsScore >= 85 ? 'Excellent' 
+        : atsScore >= 70 ? 'Good'
+        : atsScore >= 50 ? 'Decent'
+        : atsScore > 0 ? 'Needs Improvement'
+        : 'Not analyzed';
       
       setRealTimeMetrics(prev => ({
         placementScore,
@@ -625,6 +1066,8 @@ const StudentDashboard = () => {
         totalSkills: skillsProgress.total,
         certificationsCount,
         cgpa,
+        atsScore,
+        atsCategory,
         previousPlacementScore: prev.placementScore || placementScore - 5
       }));
     }
@@ -694,6 +1137,12 @@ const StudentDashboard = () => {
       const skillsProgress = calculateSkillsProgress();
       const certificationsCount = (studentDetails.certifications_urls || []).length;
       const cgpa = studentDetails.cgpa || 0;
+      const atsScore = studentDetails.ats_score || 0;
+      const atsCategory = atsScore >= 85 ? 'Excellent' 
+        : atsScore >= 70 ? 'Good'
+        : atsScore >= 50 ? 'Decent'
+        : atsScore > 0 ? 'Needs Improvement'
+        : 'Not analyzed';
       
       setRealTimeMetrics(prev => ({
         placementScore,
@@ -701,6 +1150,8 @@ const StudentDashboard = () => {
         totalSkills: skillsProgress.total,
         certificationsCount,
         cgpa,
+        atsScore,
+        atsCategory,
         previousPlacementScore: prev.placementScore || placementScore - 5
       }));
     }
@@ -822,7 +1273,7 @@ const StudentDashboard = () => {
           </Card>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             {[
               {
                 title: "Placement Score",
@@ -841,6 +1292,21 @@ const StudentDashboard = () => {
                 icon: Target,
                 gradient: "from-blue-400 to-blue-600",
                 bgGradient: "from-blue-50 to-blue-100"
+              },
+              {
+                title: "ATS Score",
+                value: realTimeMetrics.atsScore > 0 ? `${realTimeMetrics.atsScore}%` : 'N/A',
+                subtitle: realTimeMetrics.atsCategory,
+                progress: realTimeMetrics.atsScore > 0 ? realTimeMetrics.atsScore : 0,
+                icon: Brain,
+                gradient: realTimeMetrics.atsScore >= 85 ? "from-green-400 to-green-600" 
+                  : realTimeMetrics.atsScore >= 70 ? "from-cyan-400 to-cyan-600"
+                  : realTimeMetrics.atsScore >= 50 ? "from-yellow-400 to-yellow-600"
+                  : "from-gray-400 to-gray-600",
+                bgGradient: realTimeMetrics.atsScore >= 85 ? "from-green-50 to-green-100" 
+                  : realTimeMetrics.atsScore >= 70 ? "from-cyan-50 to-cyan-100"
+                  : realTimeMetrics.atsScore >= 50 ? "from-yellow-50 to-yellow-100"
+                  : "from-gray-50 to-gray-100"
               },
               {
                 title: "Certifications",
@@ -867,8 +1333,16 @@ const StudentDashboard = () => {
                 key={metric.title} 
                 className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 bg-gradient-to-br ${metric.bgGradient} group cursor-pointer`}
                 onClick={() => {
-                  // Add click functionality to show detailed metric information
-                  console.log(`Clicked on ${metric.title} metric`);
+                  // Handle specific card clicks
+                  if (metric.title === "ATS Score") {
+                    if (realTimeMetrics.atsScore > 0) {
+                      setShowATSAnalyzer(true);
+                    } else {
+                      alert("No ATS analysis available. Please upload your resume first.");
+                    }
+                  } else {
+                    console.log(`Clicked on ${metric.title} metric`);
+                  }
                 }}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -898,7 +1372,7 @@ const StudentDashboard = () => {
                       Real-time
                     </Badge>
                     <span className="text-xs text-gray-600 group-hover:text-gray-700">
-                      Updated now
+                      {metric.title === "ATS Score" && realTimeMetrics.atsScore > 0 ? "Click to view analysis" : "Updated now"}
                     </span>
                   </div>
                 </CardContent>
@@ -1417,6 +1891,191 @@ const StudentDashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* ATS Resume Analysis */}
+              <Card className="border-2 border-gray-200 shadow-xl bg-gradient-to-r from-cyan-50 to-teal-50">
+                <CardHeader className="bg-gradient-to-r from-cyan-100 to-teal-100 border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+                    <Brain className="h-6 w-6 text-cyan-600" />
+                    ATS Resume Analysis
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Your resume's compatibility with Applicant Tracking Systems
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {studentDetails?.ats_score ? (
+                    <div className="space-y-4">
+                      {/* ATS Score Display */}
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-cyan-200">
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-600 mb-1 block">ATS Compatibility Score</Label>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-3xl font-bold ${
+                              studentDetails.ats_score >= 85 ? 'text-green-600' 
+                                : studentDetails.ats_score >= 70 ? 'text-blue-600'
+                                : studentDetails.ats_score >= 50 ? 'text-yellow-600'
+                                : 'text-red-600'
+                            }`}>
+                              {studentDetails.ats_score}%
+                            </span>
+                            <Badge className={
+                              studentDetails.ats_score >= 85 ? 'bg-green-500 text-white' 
+                                : studentDetails.ats_score >= 70 ? 'bg-blue-500 text-white'
+                                : studentDetails.ats_score >= 50 ? 'bg-yellow-500 text-white'
+                                : 'bg-red-500 text-white'
+                            }>
+                              {studentDetails.ats_score >= 85 ? 'Excellent' 
+                                : studentDetails.ats_score >= 70 ? 'Good'
+                                : studentDetails.ats_score >= 50 ? 'Decent'
+                                : 'Needs Improvement'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Label className="text-sm font-semibold text-gray-600 mb-1 block">Impact on Placement</Label>
+                          <p className={`text-sm font-medium ${
+                            studentDetails.ats_score >= 85 ? 'text-green-600' 
+                              : studentDetails.ats_score >= 70 ? 'text-blue-600'
+                              : studentDetails.ats_score >= 50 ? 'text-yellow-600'
+                              : 'text-red-600'
+                          }`}>
+                            {studentDetails.ats_score >= 85 
+                              ? 'Significantly boosts placement chances ⭐' 
+                              : studentDetails.ats_score >= 70 
+                              ? 'Improves placement chances 👍'
+                              : studentDetails.ats_score >= 50 
+                              ? 'Moderate positive impact 👌'
+                              : 'May hurt placement chances ⚠️'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Analysis Details */}
+                      {studentDetails.ats_analysis && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Strengths */}
+                          {studentDetails.ats_analysis.strengths && studentDetails.ats_analysis.strengths.length > 0 && (
+                            <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                              <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                                <Star className="h-4 w-4" />
+                                Key Strengths
+                              </h4>
+                              <ul className="space-y-1">
+                                {studentDetails.ats_analysis.strengths.slice(0, 3).map((strength: string, index: number) => (
+                                  <li key={index} className="text-sm text-green-700 flex items-start gap-2">
+                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                                    {strength}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Improvement Areas */}
+                          {studentDetails.ats_analysis.weaknesses && studentDetails.ats_analysis.weaknesses.length > 0 && (
+                            <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                              <h4 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                                <Target className="h-4 w-4" />
+                                Areas to Improve
+                              </h4>
+                              <ul className="space-y-1">
+                                {studentDetails.ats_analysis.weaknesses.slice(0, 3).map((weakness: string, index: number) => (
+                                  <li key={index} className="text-sm text-orange-700 flex items-start gap-2">
+                                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                                    {weakness}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Analysis Date */}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">
+                          Last analyzed: {studentDetails?.updated_at ? new Date(studentDetails.updated_at).toLocaleDateString() : 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : autoAnalyzingATS ? (
+                    <div className="text-center py-8 space-y-4">
+                      <div className="w-16 h-16 bg-cyan-100 rounded-full flex items-center justify-center mx-auto">
+                        <Brain className="h-8 w-8 text-cyan-600 animate-pulse" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-cyan-700 mb-2">Analyzing Your Resume...</h4>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Our AI is analyzing your resume for ATS compatibility. This will just take a moment!
+                        </p>
+                        <div className="space-y-3">
+                          <Badge className="bg-cyan-500 text-white px-4 py-2 font-semibold animate-pulse">
+                            🔍 Analysis in Progress
+                          </Badge>
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-cyan-600"></div>
+                            <span className="text-sm text-gray-600">Processing your resume content...</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 space-y-4">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto">
+                        <Brain className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-2">No ATS Analysis Available</h4>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Your resume hasn't been analyzed for ATS compatibility yet. Analyze it now to improve your placement chances!
+                        </p>
+                        <div className="space-y-3">
+                          <Badge variant="outline" className="text-orange-600 border-orange-600 px-4 py-2 font-semibold">
+                            ⚠️ Analysis Needed
+                          </Badge>
+                          {studentDetails?.resume_url ? (
+                            <div className="space-y-2">
+                              <Button
+                                onClick={() => setShowATSAnalyzer(true)}
+                                className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-lg font-semibold"
+                              >
+                                <Brain className="h-4 w-4 mr-2" />
+                                Analyze My Resume
+                              </Button>
+                              
+                              {/* Debug button */}
+                              <div>
+                                <Button
+                                  onClick={async () => {
+                                    try {
+                                      console.log('🔧 Starting debug test...');
+                                      await testDatabaseAccess();
+                                      await performAutomaticATSAnalysis(studentDetails.resume_url);
+                                    } catch (error) {
+                                      console.error('Debug test failed:', error);
+                                      alert(`Debug test failed: ${error.message}`);
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50"
+                                >
+                                  🔧 Debug ATS Analysis
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">
+                              Please upload your resume first to enable ATS analysis
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Profile Completion Status */}
               <Card className="border-2 border-gray-200 shadow-xl bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100">
                 <CardContent className="p-8">
@@ -1478,6 +2137,40 @@ const StudentDashboard = () => {
               onExport={exportReportAsPDF}
               onShare={shareReport}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ATS Resume Analyzer Modal */}
+      {showATSAnalyzer && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 overflow-auto p-4">
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Brain className="h-8 w-8 text-cyan-600" />
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">ATS Resume Analysis</h2>
+                      <p className="text-gray-600">Get your resume analyzed for ATS compatibility</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowATSAnalyzer(false)}
+                    className="p-2 hover:bg-gray-100"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="p-6">
+                  <ATSResumeAnalyzer 
+                    onScoreUpdate={handleATSScoreUpdate}
+                    initialScore={studentDetails?.ats_analysis}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -60,7 +60,7 @@ const Login = () => {
 
         if (userType !== role) {
           setErrorMessage(`Please select the correct account type.`);
-          return;1
+          return;
         }
 
         // Navigate based on the actual user role (not just the selected tab)
