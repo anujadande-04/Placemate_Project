@@ -40,6 +40,7 @@ import { PlacementReportView } from "@/components/PlacementReportView";
 import ATSResumeAnalyzer from "@/components/ATSResumeAnalyzer";
 import { skillAssessmentService } from "@/services/skillAssessmentService";
 import { reportGenerationService, PlacementReport } from "@/services/reportGenerationService";
+import { PersistentDataService, type ATSAnalysisData } from "@/services/persistentDataServiceSimple";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ const StudentDashboard = () => {
     atsCategory: 'Not analyzed',
     previousPlacementScore: 0
   });
+  const [skillAssessmentData, setSkillAssessmentData] = useState([]);
   const [currentReport, setCurrentReport] = useState<PlacementReport | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -103,6 +105,9 @@ const StudentDashboard = () => {
       if (user) {
         setUser(user);
         
+        // Load skill assessment data
+        await loadSkillAssessmentData(user.id);
+        
         // Get user profile from profiles table
         const { data: profile } = await supabase
           .from('profiles')
@@ -120,14 +125,14 @@ const StudentDashboard = () => {
         // Check for locally stored ATS data if database doesn't have it
         let finalStudentDetails = studentDetails;
         if (studentDetails && (!studentDetails.ats_score || studentDetails.ats_score === 0)) {
-          const localAtsData = loadLocalATSData(user.id);
+          const localAtsData = await loadLocalATSData(user.id);
           if (localAtsData) {
             finalStudentDetails = {
               ...studentDetails,
-              ats_score: localAtsData.score,
+              ats_score: localAtsData.overallScore,
               ats_analysis: localAtsData.analysis
             };
-            console.log('📱 Loaded ATS data from localStorage');
+            console.log('📱 Loaded ATS data from persistent storage');
           }
         }
         
@@ -152,6 +157,9 @@ const StudentDashboard = () => {
           
           // Automatically analyze resume if needed
           checkAndAnalyzeResume(finalStudentDetails);
+          
+          // Refresh metrics with loaded data
+          setTimeout(() => refreshMetrics(), 100);
         }
       } else {
         // No authenticated user - redirect to login
@@ -170,6 +178,11 @@ const StudentDashboard = () => {
 
   const handleLogout = async () => {
     try {
+      // Preserve user data before logout
+      if (user?.id) {
+        PersistentDataService.preserveUserData(user.id);
+      }
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       navigate("/login");
@@ -234,40 +247,12 @@ const StudentDashboard = () => {
         const cgpa = parseFloat(editForm.cgpa) || 0;
         const atsScore = studentDetails?.ats_score || 0;
         
-        // Get enhanced ATS information including analysis details
-        const getATSCategoryWithDetails = () => {
-          if (atsScore === 0) return 'Not analyzed';
-          
-          // Try to load detailed ATS analysis from localStorage
-          const atsData = loadLocalATSData(user?.id);
-          if (atsData && atsData.analysis) {
-            const analysis = atsData.analysis;
-            let category = atsScore >= 85 ? 'Excellent' 
-              : atsScore >= 70 ? 'Good'
-              : atsScore >= 50 ? 'Decent'
-              : 'Needs Improvement';
-            
-            // Add key insights to the category
-            const insights = [];
-            if (analysis.strengths && analysis.strengths.length > 0) {
-              insights.push(`${analysis.strengths.length} strengths`);
-            }
-            if (analysis.improvements && analysis.improvements.length > 0) {
-              insights.push(`${analysis.improvements.length} improvements`);
-            }
-            
-            return insights.length > 0 ? `${category} • ${insights.join(', ')}` : category;
-          }
-          
-          // Fallback to basic category
-          return atsScore >= 85 ? 'Excellent' 
-            : atsScore >= 70 ? 'Good'
-            : atsScore >= 50 ? 'Decent'
-            : atsScore > 0 ? 'Needs Improvement'
-            : 'Not analyzed';
-        };
-        
-        const atsCategory = getATSCategoryWithDetails();
+        // Get ATS category (details will be loaded when ATS data is available)
+        const atsCategory = atsScore >= 85 ? 'Excellent' 
+          : atsScore >= 70 ? 'Good'
+          : atsScore >= 50 ? 'Decent'
+          : atsScore > 0 ? 'Needs Improvement'
+          : 'Not analyzed';
         
         setRealTimeMetrics(prev => ({
           placementScore,
@@ -354,16 +339,16 @@ const StudentDashboard = () => {
           console.error('❌ Database missing ATS columns.');
           console.log('🔧 Attempting workaround: storing ATS data in localStorage...');
           
-          // Temporary workaround: store in localStorage
+          // Use persistent data service for fallback storage
           try {
-            const atsData = {
-              userId: user.id,
-              score: atsResult.overallScore,
-              analysis: atsResult,
+            const atsData: ATSAnalysisData = {
+              overallScore: atsResult.overallScore,
+              analysis: atsResult.analysis,
               timestamp: new Date().toISOString()
             };
             
-            localStorage.setItem(`ats_data_${user.id}`, JSON.stringify(atsData));
+            // Save using persistent data service (handles database + localStorage fallback)
+            await PersistentDataService.saveATSAnalysis(user.id, atsData);
             
             // Update local state
             setStudentDetails(prev => ({
@@ -373,8 +358,8 @@ const StudentDashboard = () => {
               updated_at: new Date().toISOString()
             }));
             
-            console.log('✅ ATS data stored locally as workaround');
-            alert('ATS analysis completed! (Stored locally due to database issue)\n\nTo fix permanently, add these columns to student_details table:\n- ats_score (numeric)\n- ats_analysis (jsonb)');
+            console.log('✅ ATS data stored with persistent fallback');
+            alert('ATS analysis completed and saved permanently!');
             return; // Exit successfully
             
           } catch (localError) {
@@ -498,27 +483,14 @@ const StudentDashboard = () => {
     }
   };
 
-  // Function to load ATS data from localStorage
-  const loadLocalATSData = (userId) => {
+  // Function to load ATS data using persistent data service
+  const loadLocalATSData = async (userId) => {
     try {
-      const storedData = localStorage.getItem(`ats_data_${userId}`);
-      if (storedData) {
-        const atsData = JSON.parse(storedData);
-        // Check if data is not too old (e.g., within last 30 days)
-        const dataAge = Date.now() - new Date(atsData.timestamp).getTime();
-        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        
-        if (dataAge < thirtyDays) {
-          return atsData;
-        } else {
-          // Remove old data
-          localStorage.removeItem(`ats_data_${userId}`);
-        }
-      }
+      return await PersistentDataService.getATSAnalysis(userId);
     } catch (error) {
-      console.error('Error loading local ATS data:', error);
+      console.error('Error loading ATS data:', error);
+      return null;
     }
-    return null;
   };
 
   // Debug function to test database access
@@ -1014,15 +986,73 @@ const StudentDashboard = () => {
   };
 
   const calculateSkillsProgress = () => {
+    // Use persistent skill assessment data instead of default service
+    const completedAssessments = skillAssessmentData.length;
+    
+    // Get all available skills from the skill assessment service for total count
     const skillCategories = skillAssessmentService.getSkillCategories();
-    const allSkills = skillCategories.flatMap(cat => cat.skills);
-    const completedSkills = allSkills.filter(skill => skill.completed);
+    const totalSkills = skillCategories.flatMap(cat => cat.skills).length;
     
     return {
-      completed: completedSkills.length,
-      total: allSkills.length,
-      percentage: allSkills.length > 0 ? Math.round((completedSkills.length / allSkills.length) * 100) : 0
+      completed: completedAssessments,
+      total: totalSkills,
+      percentage: totalSkills > 0 ? Math.round((completedAssessments / totalSkills) * 100) : 0
     };
+  };
+
+  const loadSkillAssessmentData = async (userId = null) => {
+    const targetUserId = userId || user?.id;
+    if (targetUserId) {
+      try {
+        console.log('Loading skill assessment data for user:', targetUserId);
+        const assessments = await PersistentDataService.getSkillAssessments(targetUserId);
+        console.log('Loaded skill assessments:', assessments);
+        setSkillAssessmentData(assessments);
+      } catch (error) {
+        console.error('Error loading skill assessments:', error);
+        setSkillAssessmentData([]);
+      }
+    }
+  };
+
+  const refreshMetrics = async () => {
+    try {
+      // Reload skill assessment data first
+      await loadSkillAssessmentData();
+      
+      // Calculate fresh metrics
+      const placementScore = calculatePlacementScore();
+      const skillsProgress = calculateSkillsProgress();
+      const certificationsCount = (studentDetails?.certifications_urls || []).length;
+      const cgpa = studentDetails?.cgpa || 0;
+      const atsScore = studentDetails?.ats_score || 0;
+      
+      // Get ATS category
+      const atsCategory = atsScore >= 85 ? 'Excellent' 
+        : atsScore >= 70 ? 'Good'
+        : atsScore >= 50 ? 'Decent'
+        : atsScore > 0 ? 'Needs Improvement'
+        : 'Not analyzed';
+      
+      setRealTimeMetrics(prev => ({
+        placementScore,
+        skillsCompleted: skillsProgress.completed,
+        totalSkills: skillsProgress.total,
+        certificationsCount,
+        cgpa,
+        atsScore,
+        atsCategory,
+        previousPlacementScore: prev.placementScore || placementScore - 5
+      }));
+      
+      console.log('✅ Metrics refreshed:', {
+        skillsCompleted: skillsProgress.completed,
+        totalSkills: skillsProgress.total,
+        assessmentDataLength: skillAssessmentData.length
+      });
+    } catch (error) {
+      console.error('Error refreshing metrics:', error);
+    }
   };
 
   const getCGPAGrade = (cgpa) => {
@@ -1042,35 +1072,6 @@ const StudentDashboard = () => {
       change,
       text: change > 0 ? `+${change} from last assessment` : change < 0 ? `${change} from last assessment` : 'No change'
     };
-  };
-
-
-
-  // Force metrics refresh - useful when skills are completed
-  const refreshMetrics = () => {
-    if (studentDetails) {
-      const placementScore = calculatePlacementScore();
-      const skillsProgress = calculateSkillsProgress();
-      const certificationsCount = (studentDetails.certifications_urls || []).length;
-      const cgpa = studentDetails.cgpa || 0;
-      const atsScore = studentDetails.ats_score || 0;
-      const atsCategory = atsScore >= 85 ? 'Excellent' 
-        : atsScore >= 70 ? 'Good'
-        : atsScore >= 50 ? 'Decent'
-        : atsScore > 0 ? 'Needs Improvement'
-        : 'Not analyzed';
-      
-      setRealTimeMetrics(prev => ({
-        placementScore,
-        skillsCompleted: skillsProgress.completed,
-        totalSkills: skillsProgress.total,
-        certificationsCount,
-        cgpa,
-        atsScore,
-        atsCategory,
-        previousPlacementScore: prev.placementScore || placementScore - 5
-      }));
-    }
   };
 
   // Generate comprehensive placement report
@@ -1273,7 +1274,7 @@ const StudentDashboard = () => {
           </Card>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
               {
                 title: "Placement Score",
@@ -1284,15 +1285,15 @@ const StudentDashboard = () => {
                 gradient: "from-pink-400 to-pink-600",
                 bgGradient: "from-pink-50 to-pink-100"
               },
-              {
-                title: "Skills Completed",
-                value: `${realTimeMetrics.skillsCompleted}/${realTimeMetrics.totalSkills}`,
-                subtitle: `${Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) || 0}% completion rate`,
-                progress: realTimeMetrics.totalSkills > 0 ? Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) : 0,
-                icon: Target,
-                gradient: "from-blue-400 to-blue-600",
-                bgGradient: "from-blue-50 to-blue-100"
-              },
+              // {
+              //   title: "Skills Completed",
+              //   value: `${realTimeMetrics.skillsCompleted}/${realTimeMetrics.totalSkills}`,
+              //   subtitle: `${Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) || 0}% completion rate`,
+              //   progress: realTimeMetrics.totalSkills > 0 ? Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) : 0,
+              //   icon: Target,
+              //   gradient: "from-blue-400 to-blue-600",
+              //   bgGradient: "from-blue-50 to-blue-100"
+              // },
               {
                 title: "ATS Score",
                 value: realTimeMetrics.atsScore > 0 ? `${realTimeMetrics.atsScore}%` : 'N/A',

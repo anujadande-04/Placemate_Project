@@ -80,7 +80,9 @@ const Signup = () => {
       console.log("Supabase connection test:", { testData, testError });
 
       // Sign up the user with email confirmation redirect
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      // Use environment variable for production or fall back to current origin
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const redirectUrl = `${baseUrl}/auth/callback`;
       console.log("Redirect URL:", redirectUrl);
       
       // Signup payload with email confirmation redirect

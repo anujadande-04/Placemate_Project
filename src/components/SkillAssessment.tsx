@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SimpleChart, ProgressRing } from "@/components/ui/charts";
 import { skillAssessmentService, type Skill, type SkillCategory, type AssessmentQuestion } from "@/services/skillAssessmentService";
+import { PersistentDataService, type SkillAssessmentResult } from "@/services/persistentDataServiceSimple";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Code, 
   Brain, 
@@ -60,20 +62,20 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
   };
 
   useEffect(() => {
-    // Load skill categories from service
-    const categories = skillAssessmentService.getSkillCategories();
-    
-    // Load saved assessment results from localStorage
-    if (user?.id) {
-      const savedResults = localStorage.getItem(`skillAssessment_${user.id}`);
-      if (savedResults) {
+    const loadSkillData = async () => {
+      // Load skill categories from service
+      const categories = skillAssessmentService.getSkillCategories();
+      
+      // Load saved assessment results from database (with localStorage fallback)
+      if (user?.id) {
         try {
-          const results = JSON.parse(savedResults);
+          const savedResults = await PersistentDataService.getSkillAssessments(user.id);
+          
           // Apply saved results to categories
           const updatedCategories = categories.map(category => ({
             ...category,
             skills: category.skills.map(skill => {
-              const savedResult = results.find((r: any) => r.skillId === skill.id);
+              const savedResult = savedResults.find(r => r.skillId === skill.id);
               if (savedResult) {
                 return {
                   ...skill,
@@ -85,6 +87,10 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
             })
           }));
           setSkillCategories(updatedCategories);
+          
+          // Migrate any local data to database
+          await PersistentDataService.migrateLocalDataToDatabase(user.id);
+          
         } catch (error) {
           console.error('Error loading saved assessment results:', error);
           setSkillCategories(categories);
@@ -92,9 +98,9 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
       } else {
         setSkillCategories(categories);
       }
-    } else {
-      setSkillCategories(categories);
-    }
+    };
+
+    loadSkillData();
   }, [user?.id]);
 
   const getIconComponent = (iconName: string) => {
@@ -137,7 +143,7 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
     setStartTime(new Date());
   };
 
-  const handleAnswer = (answerIndex: number) => {
+  const handleAnswer = async (answerIndex: number) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = answerIndex;
     setAnswers(newAnswers);
@@ -171,21 +177,29 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
         // Store in memory (existing service)
         skillAssessmentService.storeAssessmentResult(user.id, assessmentResult);
         
-        // Store in localStorage for persistence
+        // Store in database with localStorage fallback
         try {
-          const storageKey = `skillAssessment_${user.id}`;
-          const existingResults = localStorage.getItem(storageKey);
-          let results = [];
-          
-          if (existingResults) {
-            results = JSON.parse(existingResults);
-            // Remove any existing result for this skill
-            results = results.filter((r: any) => r.skillId !== currentAssessment.id);
-          }
-          
-          // Add the new result
-          results.push(assessmentResult);
-          localStorage.setItem(storageKey, JSON.stringify(results));
+          const skillAssessmentData: SkillAssessmentResult = {
+            skillId: currentAssessment.id,
+            skillName: currentAssessment.name,
+            skillCategory: currentAssessment.category,
+            score: score,
+            assessmentData: {
+              correctAnswers,
+              totalQuestions: currentQuestions.length,
+              timeSpent: startTime ? (Date.now() - startTime.getTime()) / 1000 : 0,
+              questions: currentQuestions.map((q, idx) => ({
+                question: q.question,
+                selectedAnswer: answers[idx],
+                correctAnswer: q.correctAnswer,
+                isCorrect: answers[idx] === q.correctAnswer
+              }))
+            },
+            completedAt: new Date().toISOString()
+          };
+
+          // Save to database (with localStorage fallback built-in)
+          await PersistentDataService.saveSkillAssessment(user.id, skillAssessmentData);
           
           // Update the skill categories state to reflect the new score
           setSkillCategories(prevCategories => 
@@ -200,7 +214,7 @@ const SkillAssessment: React.FC<SkillAssessmentProps> = ({ studentDetails, user,
           );
           
         } catch (error) {
-          console.error('Error saving assessment result to localStorage:', error);
+          console.error('Error saving assessment result:', error);
         }
         
         // Trigger metrics update in parent component
