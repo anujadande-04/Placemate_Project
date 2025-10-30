@@ -98,6 +98,8 @@ const StudentDashboard = () => {
     };
   }, []);
 
+
+
   const fetchUserData = async () => {
     try {
       // Get current user
@@ -106,7 +108,7 @@ const StudentDashboard = () => {
         setUser(user);
         
         // Load skill assessment data
-        await loadSkillAssessmentData(user.id);
+        const loadedAssessments = await loadSkillAssessmentData(user.id);
         
         // Get user profile from profiles table
         const { data: profile } = await supabase
@@ -138,6 +140,8 @@ const StudentDashboard = () => {
         
         setStudentDetails(finalStudentDetails);
         
+
+        
         // Initialize edit form with current data
         if (finalStudentDetails) {
           setEditForm({
@@ -158,8 +162,40 @@ const StudentDashboard = () => {
           // Automatically analyze resume if needed
           checkAndAnalyzeResume(finalStudentDetails);
           
-          // Refresh metrics with loaded data
-          setTimeout(() => refreshMetrics(), 100);
+          // Calculate and set initial metrics
+          setTimeout(() => {
+            const placementScore = calculatePlacementScore();
+            const skillsProgress = calculateSkillsProgress();
+            const certificationsCount = (finalStudentDetails.certifications_urls || []).length;
+            const cgpa = finalStudentDetails.cgpa || 0;
+            const atsScore = finalStudentDetails.ats_score || 0;
+            
+            const atsCategory = atsScore >= 85 ? 'Excellent' 
+              : atsScore >= 70 ? 'Good'
+              : atsScore >= 50 ? 'Decent'
+              : atsScore > 0 ? 'Needs Improvement'
+              : 'Not analyzed';
+            
+            setRealTimeMetrics({
+              placementScore,
+              skillsCompleted: skillsProgress.completed,
+              totalSkills: skillsProgress.total,
+              certificationsCount,
+              cgpa,
+              atsScore,
+              atsCategory,
+              previousPlacementScore: 0
+            });
+            
+            console.log('✅ Initial metrics set:', {
+              placementScore,
+              skillsCompleted: skillsProgress.completed,
+              totalSkills: skillsProgress.total,
+              certificationsCount,
+              cgpa,
+              atsScore
+            });
+          }, 500);
         }
       } else {
         // No authenticated user - redirect to login
@@ -947,7 +983,18 @@ const StudentDashboard = () => {
 
   // Real-time metrics calculation functions
   const calculatePlacementScore = () => {
-    if (!studentDetails) return 0;
+    if (!studentDetails) {
+      console.log('No student details available for placement score calculation');
+      return 0;
+    }
+    
+    console.log('Calculating placement score with:', {
+      cgpa: studentDetails.cgpa,
+      technologies: studentDetails.technologies?.length || 0,
+      atsScore: studentDetails.ats_score,
+      certificates: studentDetails.certifications_urls?.length || 0,
+      projects: studentDetails.projects?.length || 0
+    });
     
     let score = 0;
     let maxScore = 100;
@@ -1004,30 +1051,26 @@ const StudentDashboard = () => {
     const targetUserId = userId || user?.id;
     if (targetUserId) {
       try {
-        console.log('Loading skill assessment data for user:', targetUserId);
         const assessments = await PersistentDataService.getSkillAssessments(targetUserId);
-        console.log('Loaded skill assessments:', assessments);
         setSkillAssessmentData(assessments);
+        return assessments;
       } catch (error) {
         console.error('Error loading skill assessments:', error);
         setSkillAssessmentData([]);
+        return [];
       }
     }
+    return [];
   };
 
-  const refreshMetrics = async () => {
-    try {
-      // Reload skill assessment data first
-      await loadSkillAssessmentData();
-      
-      // Calculate fresh metrics
+  const refreshMetrics = () => {
+    if (studentDetails) {
       const placementScore = calculatePlacementScore();
       const skillsProgress = calculateSkillsProgress();
-      const certificationsCount = (studentDetails?.certifications_urls || []).length;
-      const cgpa = studentDetails?.cgpa || 0;
-      const atsScore = studentDetails?.ats_score || 0;
+      const certificationsCount = (studentDetails.certifications_urls || []).length;
+      const cgpa = studentDetails.cgpa || 0;
+      const atsScore = studentDetails.ats_score || 0;
       
-      // Get ATS category
       const atsCategory = atsScore >= 85 ? 'Excellent' 
         : atsScore >= 70 ? 'Good'
         : atsScore >= 50 ? 'Decent'
@@ -1044,14 +1087,6 @@ const StudentDashboard = () => {
         atsCategory,
         previousPlacementScore: prev.placementScore || placementScore - 5
       }));
-      
-      console.log('✅ Metrics refreshed:', {
-        skillsCompleted: skillsProgress.completed,
-        totalSkills: skillsProgress.total,
-        assessmentDataLength: skillAssessmentData.length
-      });
-    } catch (error) {
-      console.error('Error refreshing metrics:', error);
     }
   };
 
@@ -1278,71 +1313,110 @@ const StudentDashboard = () => {
             {[
               {
                 title: "Placement Score",
-                value: `${realTimeMetrics.placementScore}/100`,
-                subtitle: getPlacementScoreChange(realTimeMetrics.placementScore).text,
+                value: `${realTimeMetrics.placementScore}%`,
+                subtitle: realTimeMetrics.placementScore >= 80 ? "🎉 Excellent readiness!" : 
+                         realTimeMetrics.placementScore >= 60 ? "👍 Good progress" :
+                         realTimeMetrics.placementScore >= 40 ? "📈 Getting there" : "🚀 Let's improve!",
                 progress: realTimeMetrics.placementScore,
                 icon: TrendingUp,
-                gradient: "from-pink-400 to-pink-600",
-                bgGradient: "from-pink-50 to-pink-100"
+                gradient: realTimeMetrics.placementScore >= 80 ? "from-green-400 to-green-600" :
+                         realTimeMetrics.placementScore >= 60 ? "from-blue-400 to-blue-600" :
+                         realTimeMetrics.placementScore >= 40 ? "from-yellow-400 to-yellow-600" : "from-red-400 to-red-600",
+                bgGradient: realTimeMetrics.placementScore >= 80 ? "from-green-50 to-green-100" :
+                           realTimeMetrics.placementScore >= 60 ? "from-blue-50 to-blue-100" :
+                           realTimeMetrics.placementScore >= 40 ? "from-yellow-50 to-yellow-100" : "from-red-50 to-red-100"
               },
               // {
               //   title: "Skills Completed",
-              //   value: `${realTimeMetrics.skillsCompleted}/${realTimeMetrics.totalSkills}`,
-              //   subtitle: `${Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) || 0}% completion rate`,
+              //   value: realTimeMetrics.skillsCompleted > 0 ? `${realTimeMetrics.skillsCompleted}/${realTimeMetrics.totalSkills}` : "0 assessments",
+              //   subtitle: realTimeMetrics.skillsCompleted > 0 ? 
+              //     `🎯 ${Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100)}% complete - Great work!` :
+              //     "🎓 Start your first skill assessment!",
               //   progress: realTimeMetrics.totalSkills > 0 ? Math.round((realTimeMetrics.skillsCompleted / realTimeMetrics.totalSkills) * 100) : 0,
               //   icon: Target,
-              //   gradient: "from-blue-400 to-blue-600",
-              //   bgGradient: "from-blue-50 to-blue-100"
+              //   gradient: realTimeMetrics.skillsCompleted > 0 ? "from-blue-400 to-blue-600" : "from-gray-400 to-gray-600",
+              //   bgGradient: realTimeMetrics.skillsCompleted > 0 ? "from-blue-50 to-blue-100" : "from-gray-50 to-gray-100"
               // },
               {
                 title: "ATS Score",
-                value: realTimeMetrics.atsScore > 0 ? `${realTimeMetrics.atsScore}%` : 'N/A',
-                subtitle: realTimeMetrics.atsCategory,
+                value: realTimeMetrics.atsScore > 0 ? `${realTimeMetrics.atsScore}%` : 'Not analyzed',
+                subtitle: realTimeMetrics.atsScore >= 85 ? "🌟 ATS Excellent!" :
+                         realTimeMetrics.atsScore >= 70 ? "✅ ATS Good" :
+                         realTimeMetrics.atsScore >= 50 ? "⚠️ ATS Needs work" :
+                         realTimeMetrics.atsScore > 0 ? "❌ ATS Poor" : "📄 Upload your resume",
                 progress: realTimeMetrics.atsScore > 0 ? realTimeMetrics.atsScore : 0,
                 icon: Brain,
                 gradient: realTimeMetrics.atsScore >= 85 ? "from-green-400 to-green-600" 
                   : realTimeMetrics.atsScore >= 70 ? "from-cyan-400 to-cyan-600"
                   : realTimeMetrics.atsScore >= 50 ? "from-yellow-400 to-yellow-600"
+                  : realTimeMetrics.atsScore > 0 ? "from-red-400 to-red-600"
                   : "from-gray-400 to-gray-600",
                 bgGradient: realTimeMetrics.atsScore >= 85 ? "from-green-50 to-green-100" 
                   : realTimeMetrics.atsScore >= 70 ? "from-cyan-50 to-cyan-100"
                   : realTimeMetrics.atsScore >= 50 ? "from-yellow-50 to-yellow-100"
+                  : realTimeMetrics.atsScore > 0 ? "from-red-50 to-red-100"
                   : "from-gray-50 to-gray-100"
               },
               {
                 title: "Certifications",
-                value: realTimeMetrics.certificationsCount.toString(),
+                value: realTimeMetrics.certificationsCount > 0 ? realTimeMetrics.certificationsCount.toString() : "None",
                 subtitle: realTimeMetrics.certificationsCount > 0 ? 
-                  `${realTimeMetrics.certificationsCount} ${realTimeMetrics.certificationsCount === 1 ? 'certificate' : 'certificates'} uploaded` : 
-                  'No certificates yet',
+                  `🏆 ${realTimeMetrics.certificationsCount} ${realTimeMetrics.certificationsCount === 1 ? 'certificate' : 'certificates'} verified` : 
+                  '📜 Add your certifications',
                 progress: null,
                 icon: Award,
-                gradient: "from-purple-400 to-purple-600",
-                bgGradient: "from-purple-50 to-purple-100"
+                gradient: realTimeMetrics.certificationsCount > 0 ? "from-purple-400 to-purple-600" : "from-gray-400 to-gray-600",
+                bgGradient: realTimeMetrics.certificationsCount > 0 ? "from-purple-50 to-purple-100" : "from-gray-50 to-gray-100"
               },
               {
                 title: "CGPA",
-                value: realTimeMetrics.cgpa > 0 ? realTimeMetrics.cgpa.toFixed(2) : 'N/A',
-                subtitle: getCGPAGrade(realTimeMetrics.cgpa),
+                value: realTimeMetrics.cgpa > 0 ? realTimeMetrics.cgpa.toFixed(2) : 'Not set',
+                subtitle: realTimeMetrics.cgpa >= 9.0 ? "🌟 Outstanding!" :
+                         realTimeMetrics.cgpa >= 8.0 ? "🎓 Excellent!" :
+                         realTimeMetrics.cgpa >= 7.0 ? "👍 Very Good" :
+                         realTimeMetrics.cgpa >= 6.0 ? "📚 Good" :
+                         realTimeMetrics.cgpa > 0 ? "📈 Keep improving" : "📝 Please update your CGPA",
                 progress: realTimeMetrics.cgpa > 0 ? Math.round((realTimeMetrics.cgpa / 10) * 100) : 0,
                 icon: BookOpen,
-                gradient: "from-emerald-400 to-emerald-600",
-                bgGradient: "from-emerald-50 to-emerald-100"
+                gradient: realTimeMetrics.cgpa >= 8.0 ? "from-green-400 to-green-600" :
+                         realTimeMetrics.cgpa >= 7.0 ? "from-emerald-400 to-emerald-600" :
+                         realTimeMetrics.cgpa >= 6.0 ? "from-blue-400 to-blue-600" :
+                         realTimeMetrics.cgpa > 0 ? "from-yellow-400 to-yellow-600" : "from-gray-400 to-gray-600",
+                bgGradient: realTimeMetrics.cgpa >= 8.0 ? "from-green-50 to-green-100" :
+                           realTimeMetrics.cgpa >= 7.0 ? "from-emerald-50 to-emerald-100" :
+                           realTimeMetrics.cgpa >= 6.0 ? "from-blue-50 to-blue-100" :
+                           realTimeMetrics.cgpa > 0 ? "from-yellow-50 to-yellow-100" : "from-gray-50 to-gray-100"
               }
             ].map((metric, index) => (
               <Card 
                 key={metric.title} 
                 className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 bg-gradient-to-br ${metric.bgGradient} group cursor-pointer`}
                 onClick={() => {
-                  // Handle specific card clicks
-                  if (metric.title === "ATS Score") {
+                  // Handle specific card clicks with detailed actions
+                  if (metric.title === "Placement Score") {
+                    generatePlacementReport();
+                  } else if (metric.title === "Skills Completed") {
+                    // Switch to Skills tab
+                    const skillsTab = document.querySelector('[value="skills"]') as HTMLElement;
+                    if (skillsTab) skillsTab.click();
+                  } else if (metric.title === "ATS Score") {
                     if (realTimeMetrics.atsScore > 0) {
                       setShowATSAnalyzer(true);
                     } else {
-                      alert("No ATS analysis available. Please upload your resume first.");
+                      alert("📄 No ATS analysis available yet!\n\nTo get your ATS score:\n1. Go to Profile tab\n2. Upload your resume\n3. Wait for automatic analysis");
                     }
-                  } else {
-                    console.log(`Clicked on ${metric.title} metric`);
+                  } else if (metric.title === "Certifications") {
+                    if (realTimeMetrics.certificationsCount > 0) {
+                      setShowCertificates(true);
+                    } else {
+                      alert("🏆 No certificates uploaded yet!\n\nTo add certificates:\n1. Go to Profile tab\n2. Scroll to Academic Information\n3. Upload your certificates");
+                    }
+                  } else if (metric.title === "CGPA") {
+                    if (realTimeMetrics.cgpa === 0) {
+                      alert("📚 CGPA not provided!\n\nTo update your CGPA:\n1. Click 'Edit Profile'\n2. Fill in your CGPA\n3. Save changes");
+                    } else {
+                      alert(`📊 Your CGPA: ${realTimeMetrics.cgpa.toFixed(2)}\nGrade: ${getCGPAGrade(realTimeMetrics.cgpa)}\n\nThis contributes to your overall placement score!`);
+                    }
                   }
                 }}
               >
@@ -1373,7 +1447,13 @@ const StudentDashboard = () => {
                       Real-time
                     </Badge>
                     <span className="text-xs text-gray-600 group-hover:text-gray-700">
-                      {metric.title === "ATS Score" && realTimeMetrics.atsScore > 0 ? "Click to view analysis" : "Updated now"}
+                      {metric.title === "Placement Score" ? "Click to generate report" :
+                       metric.title === "Skills Completed" ? "Click to take assessments" :
+                       metric.title === "ATS Score" && realTimeMetrics.atsScore > 0 ? "Click to view analysis" :
+                       metric.title === "ATS Score" ? "Upload resume to analyze" :
+                       metric.title === "Certifications" && realTimeMetrics.certificationsCount > 0 ? "Click to view certificates" :
+                       metric.title === "Certifications" ? "Upload certificates" :
+                       metric.title === "CGPA" ? "Click for details" : "Updated now"}
                     </span>
                   </div>
                 </CardContent>
