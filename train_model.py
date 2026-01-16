@@ -37,7 +37,7 @@ class PlacementMLTrainer:
         
     def load_and_preprocess_data(self, csv_path):
         """Load and preprocess the placement dataset"""
-        print("📊 Loading dataset...")
+        print(" Loading dataset...")
         df = pd.read_csv(csv_path)
         print(f"Dataset loaded: {len(df)} records")
         
@@ -53,7 +53,7 @@ class PlacementMLTrainer:
     
     def feature_engineering(self, df):
         """Create and engineer advanced features for the model"""
-        print("🔧 Engineering enhanced features...")
+        print(" Engineering enhanced features...")
         
         # Base numerical features
         numerical_features = ['CGPA', 'WorkExp', 'Internships', 'Projects', 'ResumeScore', 'SoftSkills']
@@ -88,14 +88,14 @@ class PlacementMLTrainer:
         X_base = np.hstack([X_numerical, X_skills])
         
         # Create polynomial features for interactions
-        print("🔗 Creating feature interactions...")
+        print(" Creating feature interactions...")
         X_poly = self.poly_features.fit_transform(X_numerical)  # Only on numerical features to avoid explosion
         
         # Combine all features
         X_combined = np.hstack([X_base, X_poly])
         
         # Feature selection to reduce overfitting
-        print("🎯 Selecting best features...")
+        print(" Selecting best features...")
         X_selected = self.feature_selector.fit_transform(X_combined, df['Placed_Binary'])
         
         # Store feature names (approximation for selected features)
@@ -114,7 +114,7 @@ class PlacementMLTrainer:
     
     def hyperparameter_tuning(self, X, y):
         """Perform hyperparameter tuning to find best model"""
-        print("🔍 Performing hyperparameter tuning...")
+        print(" Performing hyperparameter tuning...")
         
         # Define parameter grid
         param_grid = {
@@ -143,8 +143,8 @@ class PlacementMLTrainer:
         grid_search.fit(X_sample_scaled, y_sample)
         
         self.best_params = grid_search.best_params_
-        print(f"🏆 Best parameters: {self.best_params}")
-        print(f"🎯 Best cross-validation score: {grid_search.best_score_:.4f}")
+        print(f" Best parameters: {self.best_params}")
+        print(f" Best cross-validation score: {grid_search.best_score_:.4f}")
         
         # Create final model with best parameters
         self.model = LogisticRegression(random_state=42, max_iter=2000, **self.best_params)
@@ -153,7 +153,7 @@ class PlacementMLTrainer:
 
     def train_model(self, X, y):
         """Train the optimized logistic regression model"""
-        print("🚀 Training optimized Logistic Regression model...")
+        print(" Training optimized Logistic Regression model...")
         
         # Perform hyperparameter tuning first
         cv_score = self.hyperparameter_tuning(X, y)
@@ -176,7 +176,7 @@ class PlacementMLTrainer:
         
         # Cross-validation on training set
         cv_scores = cross_val_score(self.model, X_train_scaled, y_train, cv=5)
-        print(f"🔄 Cross-validation accuracy: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+        print(f" Cross-validation accuracy: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
         
         # Make predictions
         y_train_pred = self.model.predict(X_train_scaled)
@@ -191,15 +191,15 @@ class PlacementMLTrainer:
         test_accuracy = accuracy_score(y_test, y_test_pred)
         auc_score = roc_auc_score(y_test, y_test_proba)
         
-        print(f"✅ Training Accuracy: {train_accuracy:.4f}")
-        print(f"✅ Test Accuracy: {test_accuracy:.4f}")
-        print(f"📈 AUC Score: {auc_score:.4f}")
+        print(f" Training Accuracy: {train_accuracy:.4f}")
+        print(f"Test Accuracy: {test_accuracy:.4f}")
+        print(f" AUC Score: {auc_score:.4f}")
         
         # Show probability distribution
         avg_placed_prob = y_test_proba[y_test == 1].mean()
         avg_not_placed_prob = y_test_proba[y_test == 0].mean()
-        print(f"📊 Average probability for placed students: {avg_placed_prob:.1%}")
-        print(f"📊 Average probability for non-placed students: {avg_not_placed_prob:.1%}")
+        print(f" Average probability for placed students: {avg_placed_prob:.1%}")
+        print(f" Average probability for non-placed students: {avg_not_placed_prob:.1%}")
         
         # Detailed evaluation
         print("\n📈 Classification Report:")
@@ -209,7 +209,7 @@ class PlacementMLTrainer:
     
     def analyze_feature_importance(self):
         """Analyze which features are most important"""
-        print("\n🎯 Feature Importance Analysis:")
+        print("\n Feature Importance Analysis:")
         coefficients = self.model.coef_[0]
         
         # Get top 10 most important features
@@ -218,7 +218,7 @@ class PlacementMLTrainer:
         
         print("Top 10 Most Important Features:")
         for i, (feature, coef) in enumerate(feature_importance[:10]):
-            direction = "📈 Positive" if coef > 0 else "📉 Negative"
+            direction = " Positive" if coef > 0 else " Negative"
             print(f"{i+1:2d}. {feature:20s}: {coef:8.4f} ({direction})")
     
     def export_model(self, output_path='public/trained_model.json'):
@@ -256,8 +256,8 @@ class PlacementMLTrainer:
         with open(output_path, 'w') as f:
             json.dump(model_data, f, indent=2)
         
-        print("✅ Enhanced model exported successfully!")
-        print(f"📊 Final Performance: Accuracy={final_accuracy:.4f}, AUC={auc_score:.4f}")
+        print(" Enhanced model exported successfully!")
+        print(f" Final Performance: Accuracy={final_accuracy:.4f}, AUC={auc_score:.4f}")
         
     def run_full_training(self, csv_path='public/dataset.csv'):
         """Run the complete enhanced training pipeline"""
@@ -278,9 +278,9 @@ class PlacementMLTrainer:
         # Export enhanced model
         self.export_model()
         
-        print("\n🎉 Enhanced training completed successfully!")
-        print("� Optimized model ready for production use!")
-        print("🔗 Model integrated with advanced feature engineering and hyperparameter tuning")
+        print("\n Enhanced training completed successfully!")
+        print(" Optimized model ready for production use!")
+        print(" Model integrated with advanced feature engineering and hyperparameter tuning")
 
 if __name__ == "__main__":
     trainer = PlacementMLTrainer()
